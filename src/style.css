@@ -2513,3 +2513,368 @@ dialog h2 {
     margin: 9px 0;
   }
 }
+
+/* Each explorer carries their own village and adventures. */
+.explorer-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 9px 3px 3px;
+  border-radius: 13px;
+  background: #fff8e4b8;
+  font-size: 11px;
+  font-weight: 700;
+  max-width: 160px;
+}
+.explorer-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.explorer-avatar {
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
+}
+.explorer-chip .explorer-avatar {
+  width: 34px;
+  height: 34px;
+}
+.village-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 14px;
+  padding: 10px 16px;
+  border: 1px solid #88a48a70;
+  border-radius: 10px;
+  background: #f9fff1c9;
+  text-align: left;
+  vertical-align: middle;
+  box-shadow: 0 3px 0 #71916925;
+}
+.village-entry > .icon {
+  color: #6a8c60;
+  width: 24px;
+  height: 24px;
+}
+.village-entry span {
+  font-weight: 700;
+  font-size: 13px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.village-entry small {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  margin-top: 4px;
+}
+#save-status {
+  font-size: 9px;
+  letter-spacing: 0;
+  color: #5d7968;
+}
+#save-status.save-warning {
+  color: #a34d31;
+  font-weight: 700;
+}
+.explorer-list {
+  display: grid;
+  gap: 10px;
+  margin: 24px 0;
+}
+.explorer-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.explorer-select {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 12px;
+  border-radius: 13px;
+  border: 1px solid #76978140;
+  background: #f2f5eb;
+}
+.explorer-select.chosen {
+  border-color: #739c75;
+  background: #e6eee0;
+}
+.explorer-select span {
+  flex: 1;
+  min-width: 0;
+}
+.explorer-select strong {
+  display: block;
+  font-family: "Outfit Variable", sans-serif;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.explorer-select small {
+  display: block;
+  color: #6f8074;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.explorer-name-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 25px 0 8px;
+}
+.explorer-name-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #9cb69d;
+  border-radius: 10px;
+  background: #fffef8;
+  font:
+    500 20px "Outfit Variable",
+    sans-serif;
+  color: #314e40;
+}
+.avatar-picker {
+  border: 0;
+  padding: 0;
+  margin: 25px 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.avatar-picker legend {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.avatar-picker label {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 4px;
+  gap: 6px;
+  border-radius: 10px;
+  background: #f0f2e8;
+  cursor: pointer;
+  font-size: 10px;
+  border: 2px solid transparent;
+}
+.avatar-picker label:has(input:checked) {
+  border-color: #7a9e79;
+  background: #e5efdf;
+}
+.avatar-picker input {
+  position: absolute;
+  opacity: 0;
+}
+.avatar-picker label:has(input:focus-visible) {
+  outline: 3px solid #d39764;
+  outline-offset: 2px;
+}
+.travel-tools {
+  position: absolute;
+  left: 28px;
+  bottom: 35px;
+  display: flex;
+  gap: 7px;
+  pointer-events: auto;
+}
+.travel-tools button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 9px;
+  padding: 10px 12px;
+  background: #4c6b59c9;
+  color: #fff9e5;
+  backdrop-filter: blur(10px);
+  font-size: 11px;
+}
+.travel-tools kbd {
+  font-size: 9px;
+  opacity: 0.65;
+}
+.travel-tools .icon {
+  width: 16px;
+  height: 16px;
+}
+.village-map .map-crystal,
+.village-map .map-portal {
+  display: none;
+}
+#quest-crystals > .explorer-avatar {
+  height: 42px;
+  width: 42px;
+}
+.landmark-emblem {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  color: #d4a963;
+}
+.landmark-emblem .icon {
+  width: 70px;
+  height: 70px;
+}
+.melody-instruction {
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.8;
+  margin: 20px 0;
+}
+.melody-keys,
+.sun-rings {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 25px 0;
+}
+.melody-key {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 13px;
+  padding: 20px 8px;
+  border: 2px solid transparent;
+  transition: transform 0.15s;
+}
+.melody-key .icon {
+  width: 45px;
+  height: 45px;
+}
+.colour-0 {
+  background: #cef0de;
+  color: #39755e;
+}
+.colour-1 {
+  background: #e4d9f5;
+  color: #7655a4;
+}
+.colour-2 {
+  background: #f7e8b6;
+  color: #a57d26;
+}
+.melody-key.played {
+  border-color: #557a5a;
+  transform: translateY(-5px);
+  box-shadow: 0 6px 15px #39735b20;
+}
+.sun-rings button {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 5px;
+  background: #f7edd5;
+  border-radius: 14px;
+  color: #987237;
+}
+.sun-ring-arrow {
+  display: grid;
+  place-items: center;
+  border: 4px double #d3ac5d;
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  font-size: 38px;
+  transition: transform 0.3s;
+}
+.sun-rings .aligned {
+  background: #e4efd9;
+}
+.sun-rings small {
+  text-transform: capitalize;
+  font-size: 11px;
+}
+@media (min-width: 761px) and (max-height: 790px) {
+  .village-entry {
+    padding: 8px 12px;
+    margin-left: 9px;
+  }
+  .hero {
+    max-width: 610px;
+  }
+}
+@media (max-width: 1000px) {
+  .travel-tools {
+    bottom: 104px;
+  }
+  .village-entry {
+    margin: 12px 0 0;
+  }
+}
+@media (max-width: 760px) {
+  .explorer-chip {
+    padding: 2px;
+    max-width: 38px;
+  }
+  .explorer-chip span {
+    display: none;
+  }
+  .header-right {
+    gap: 8px;
+  }
+  .village-entry {
+    display: flex;
+    width: fit-content;
+    margin: 15px 0 0;
+    padding: 8px 12px;
+    gap: 10px;
+  }
+  .village-entry span {
+    max-width: 225px;
+    font-size: 12px;
+  }
+  .village-entry small {
+    font-size: 9px;
+  }
+  #save-status {
+    font-size: 8px;
+    max-width: 270px;
+    margin-top: 11px;
+  }
+  .hero .learning-tags {
+    margin-top: 12px;
+  }
+  .travel-tools {
+    left: 16px;
+    bottom: 206px;
+    gap: 5px;
+  }
+  .travel-tools button {
+    font-size: 10px;
+    padding: 9px 10px;
+  }
+  .travel-tools kbd {
+    display: none;
+  }
+  .sun-ring-arrow {
+    width: 64px;
+    height: 64px;
+    font-size: 31px;
+  }
+  .avatar-picker .explorer-avatar {
+    height: 43px;
+    width: 43px;
+  }
+}
+@media (max-width: 760px) and (max-height: 740px) {
+  .village-entry small,
+  #save-status {
+    display: none;
+  }
+  .village-entry {
+    margin-top: 9px;
+    padding: 6px 12px;
+  }
+  .travel-tools {
+    bottom: 155px;
+  }
+}

@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { QUESTS } from "./quests.js";
 import { QuestWorld } from "./quest-world.js";
+import { BiomeWorld, terrainLevel } from "./biomes.js";
+import { MAX_BLOCKS } from "./profiles.js";
 
 const THEMES = {
   meadow: {
@@ -14,8 +16,8 @@ const THEMES = {
     glow: 0x70ffda,
   },
   cavern: {
-    sky: 0xb6c8df,
-    fog: 0xd7d9ec,
+    sky: 0x182642,
+    fog: 0x283852,
     grass: [0x8293a1, 0x9aa8b4, 0x8d9daa, 0xa0acb7],
     leaves: [0x8e83c2, 0xa39cd2, 0x777db7, 0xc4a3d3],
     stone: 0x76778e,
@@ -170,9 +172,13 @@ export class IslandWorld {
       });
     }
     this.questWorld = null;
+    this.biome = null;
+    this.portalSurface = null;
+    this.portal = null;
+    this.isVillage = id === "village";
     this.sheep = [];
     this.themeId = id;
-    this.theme = THEMES[id];
+    this.theme = THEMES[id === "village" ? "meadow" : id];
     this.scene.background = new THREE.Color(this.theme.sky);
     this.scene.fog = new THREE.Fog(this.theme.fog, 78, 180);
     this.root = new THREE.Group();
@@ -233,13 +239,18 @@ export class IslandWorld {
         const edge = Math.sqrt((x / 1.04) ** 2 + z * z);
         const wobble = Math.sin(x * 0.48) * 0.7 + Math.cos(z * 0.6) * 0.7;
         if (edge > 21 + wobble) continue;
-        const y = edge > 18 ? (hash(x, z) > 0.42 ? 0 : -1) : edge > 16 ? 0 : 1;
+        const y = terrainLevel(
+          id,
+          x,
+          z,
+          edge > 18 ? (hash(x, z) > 0.42 ? 0 : -1) : edge > 16 ? 0 : 1,
+        );
         this.terrain.set(`${x},${z}`, y + 0.5);
         const path =
           (Math.abs(x - Math.sin(z * 0.21) * 3) < 1.7 && z > -11) ||
           (Math.abs(z - 5) < 1.3 && Math.abs(x) < 12) ||
           (Math.abs(z + 8) < 1.4 && Math.abs(x) < 10);
-        const stream = x > 12 && x < 16 && z > 0 && z < 20;
+        const stream = id !== "village" && x > 12 && x < 16 && z > 0 && z < 20;
         this.addBatch(
           stream
             ? "rock"
@@ -275,6 +286,14 @@ export class IslandWorld {
           );
         }
       }
+    this.biome = new BiomeWorld(this, id);
+    if (this.isVillage) {
+      this.flushBatches();
+      this.makeClouds();
+      this.makeFireflies();
+      this.renderer.shadowMap.needsUpdate = true;
+      return;
+    }
     const trees = [
       [-15, 11, 1],
       [-13, -1, 0],
@@ -289,33 +308,43 @@ export class IslandWorld {
       [17, 9, 3],
       [-2, -17, 1],
     ];
-    trees.forEach(([x, z, c], i) => this.tree(x, z, 3 + (i % 3), c));
+    trees
+      .filter(([x, z]) =>
+        id === "meadow"
+          ? !(x === -15 && z === 11)
+          : id === "cavern"
+            ? x > -9
+            : false,
+      )
+      .forEach(([x, z, c], i) => this.tree(x, z, 3 + (i % 3), c));
     // An inviting little explorer's cottage.
-    for (let x = -8; x <= -4; x++)
-      for (let z = 0; z <= 3; z++) {
-        this.addBatch("plank", x, 1.65, z, 1, 0.3, 1);
-        if (z === 0 || x === -8 || x === -4) {
-          if (!(z === 0 && x === -6)) {
-            this.addBatch("wood", x, 2.5, z, 1, 1.5, 1);
-            this.addBatch("plank", x, 3.6, z, 1, 0.7, 1);
+    if (id === "meadow") {
+      for (let x = -8; x <= -4; x++)
+        for (let z = 0; z <= 3; z++) {
+          this.addBatch("plank", x, 1.65, z, 1, 0.3, 1);
+          if (z === 0 || x === -8 || x === -4) {
+            if (!(z === 0 && x === -6)) {
+              this.addBatch("wood", x, 2.5, z, 1, 1.5, 1);
+              this.addBatch("plank", x, 3.6, z, 1, 0.7, 1);
+            }
           }
         }
-      }
-    for (let row = 0; row < 4; row++)
-      for (let z = -1; z < 5; z++)
-        for (const side of [-1, 1])
-          this.addBatch(
-            "leaf1",
-            -6 + side * (3 - row * 0.8),
-            4 + row * 0.55,
-            z,
-            1.2,
-            0.65,
-            1.2,
-          );
-    this.addBatch("dark", -6, 2.7, -0.51, 1.3, 1.5, 0.05);
-    this.addBatch("glow", -7.45, 3.2, -0.56, 0.3, 0.35, 0.1);
-    this.colliders.push({ x: -6, z: 1.5, w: 5, d: 4 });
+      for (let row = 0; row < 4; row++)
+        for (let z = -1; z < 5; z++)
+          for (const side of [-1, 1])
+            this.addBatch(
+              "leaf1",
+              -6 + side * (3 - row * 0.8),
+              4 + row * 0.55,
+              z,
+              1.2,
+              0.65,
+              1.2,
+            );
+      this.addBatch("dark", -6, 2.7, -0.51, 1.3, 1.5, 0.05);
+      this.addBatch("glow", -7.45, 3.2, -0.56, 0.3, 0.35, 0.1);
+      this.colliders.push({ x: -6, z: 1.5, w: 5, d: 4 });
+    }
     this.makePortal();
     SHRINES.forEach((p, i) => this.makeShrine(p, i));
     this.makeSheep(5, 0, -1.2);
@@ -598,6 +627,7 @@ export class IslandWorld {
     return Math.max(
       this.terrain.get(`${Math.round(x)},${Math.round(z)}`) ?? -100,
       this.questWorld?.bridgeHeight(x, z) ?? -100,
+      this.biome?.heightAt(x, z) ?? -100,
     );
   }
   resize() {
@@ -640,6 +670,8 @@ export class IslandWorld {
         this.interact();
       }
       if (e.code === "KeyG") this.guide();
+      if (e.code === "KeyV") this.callbacks.village?.();
+      if (e.code === "KeyL") this.guideLandmark();
       if (e.code === "KeyB") {
         this.buildMode = !this.buildMode;
         this.callbacks.buildChange?.(this.buildMode);
@@ -731,10 +763,10 @@ export class IslandWorld {
     else this.camera.fov = 46;
     this.camera.updateProjectionMatrix();
   }
-  start(id, round) {
+  start(id, round, building) {
     this.questRound = round;
-    if (id !== this.themeId) this.loadTheme(id);
-    else this.questWorld.configure(round);
+    this.loadTheme(id);
+    this.restoreBuilding(building);
     this.collected = [...round.collected];
     this.updateCollected(round.collected);
     this.player.set(1, this.heightAt(1, 16) + 1.7, 16);
@@ -743,6 +775,53 @@ export class IslandWorld {
     this.velocityY = 0;
     this.buildMode = false;
     this.setMode("play");
+  }
+  startVillage(building) {
+    this.questRound = null;
+    this.collected = Array(5).fill(false);
+    this.loadTheme("village");
+    this.restoreBuilding(building);
+    this.player.set(0, 3.2, 13);
+    this.lookYaw = 0;
+    this.lookPitch = -0.12;
+    this.velocityY = 0;
+    this.buildMode = true;
+    this.setMode("play");
+  }
+  restoreBuilding(building) {
+    for (const block of this.blocks.values()) block.removeFromParent();
+    this.blocks.clear();
+    this.blockStock = building?.inventory ?? 36;
+    for (const b of building?.blocks || []) {
+      const m = this.mesh(["grass1", "plank", "glow"][b.type], b.x, b.y, b.z);
+      m.userData.blockType = b.type;
+      m.userData.blockKey = `${b.x},${b.y},${b.z}`;
+      this.blocks.set(m.userData.blockKey, m);
+    }
+    this.biome?.activate(building?.discovered || false);
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+  buildingState() {
+    return {
+      inventory: this.blockStock,
+      blocks: [...this.blocks.values()].map((m) => ({
+        x: m.position.x,
+        y: m.position.y,
+        z: m.position.z,
+        type: m.userData.blockType ?? 0,
+      })),
+    };
+  }
+  changedBuilding() {
+    this.callbacks.building?.(this.themeId, this.buildingState());
+  }
+  guideLandmark() {
+    if (this.isVillage) {
+      this.guide();
+      return;
+    }
+    this.biome?.guide();
+    this.callbacks.tip?.(`${this.biome.site.title}. Press E to explore!`);
   }
   jump() {
     if (this.grounded && this.mode === "play") {
@@ -766,6 +845,14 @@ export class IslandWorld {
   }
   interact() {
     if (this.mode !== "play") return;
+    if (this.isVillage) {
+      this.callbacks.villageHelp?.();
+      return;
+    }
+    if (this.biome?.nearby(this.player.x, this.player.z)) {
+      this.callbacks.landmark?.();
+      return;
+    }
     const i = this.nearby();
     if (i >= 0) this.callbacks.challenge?.(i);
     else if (
@@ -779,6 +866,13 @@ export class IslandWorld {
       );
   }
   guide() {
+    if (this.isVillage) {
+      this.player.set(0, 3.2, 6);
+      this.lookYaw = -Math.PI / 2;
+      this.lookPitch = -0.25;
+      this.velocityY = 0;
+      return;
+    }
     const index = this.collected.findIndex((x) => !x);
     const p = index < 0 ? PORTAL : SHRINES[index];
     this.player.set(p.x, this.heightAt(p.x, p.z + 3) + 1.7, p.z + 3);
@@ -821,6 +915,7 @@ export class IslandWorld {
     const s = SHRINES[index];
     this.burst(new THREE.Vector3(s.x, this.heightAt(s.x, s.z) + 2, s.z), 35);
     this.callbacks.stock?.(this.blockStock);
+    this.changedBuilding();
   }
   burst(pos, count = 35) {
     for (let i = 0; i < count; i++) {
@@ -892,28 +987,43 @@ export class IslandWorld {
     )
       return;
     if (
+      this.biome?.protected(p.x, p.z) ||
       this.questWorld?.isProtected(p.x, p.z) ||
-      SHRINES.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < 2.2) ||
-      Math.hypot(p.x - PORTAL.x, p.z - PORTAL.z) < 3.5
+      (!this.isVillage &&
+        (SHRINES.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < 2.2) ||
+          Math.hypot(p.x - PORTAL.x, p.z - PORTAL.z) < 3.5))
     ) {
       this.callbacks.tip?.(
         "Give the island jobs, bridge, and portal a little space.",
       );
       return;
     }
-    if (this.blocks.size >= 150) {
+    if (this.blocks.size >= MAX_BLOCKS) {
       this.callbacks.tip?.(
-        "Your island has 150 blocks! Mine a few to build somewhere new.",
+        "Your island has 600 blocks! Mine a few to build somewhere new.",
+      );
+      return;
+    }
+    if (
+      Math.abs(p.x) > 22 ||
+      Math.abs(p.z) > 22 ||
+      p.y > 30 ||
+      this.heightAt(p.x, p.z) < -5
+    ) {
+      this.callbacks.tip?.(
+        "Keep your creation on the island, below the clouds.",
       );
       return;
     }
     const type = ["grass1", "plank", "glow"][this.selectedBlock];
     const m = this.mesh(type, p.x, p.y, p.z);
     m.userData.blockKey = key;
+    m.userData.blockType = this.selectedBlock;
     this.blocks.set(key, m);
     this.blockStock--;
     this.renderer.shadowMap.needsUpdate = true;
     this.callbacks.stock?.(this.blockStock);
+    this.changedBuilding();
   }
   mineBlock() {
     if (this.mode !== "play" || !this.buildMode) return;
@@ -931,9 +1041,14 @@ export class IslandWorld {
     this.burst(m.position, 8);
     this.renderer.shadowMap.needsUpdate = true;
     this.callbacks.stock?.(this.blockStock);
+    this.changedBuilding();
   }
   canMove(x, z) {
-    if (this.heightAt(x, z) < -5 || this.questWorld?.blocksMovement(x, z))
+    if (
+      this.heightAt(x, z) < -5 ||
+      this.questWorld?.blocksMovement(x, z) ||
+      this.biome?.blocksMovement(x, z)
+    )
       return false;
     for (const c of this.colliders)
       if (
@@ -1024,6 +1139,7 @@ export class IslandWorld {
           z: this.player.z,
           yaw: this.lookYaw,
           nearby: this.nearby(),
+          landmark: this.biome?.nearby(this.player.x, this.player.z),
           portal:
             this.collected.every(Boolean) &&
             Math.hypot(this.player.x - PORTAL.x, this.player.z - PORTAL.z) < 4,
@@ -1033,6 +1149,11 @@ export class IslandWorld {
       this.camera.rotation.order = "YXZ";
       this.camera.rotation.set(this.lookPitch, this.lookYaw, 0);
     }
+    this.biome?.update(
+      this.mode === "play" || this.mode === "reward" || this.mode === "home"
+        ? dt
+        : 0,
+    );
     this.questWorld?.update(
       this.mode === "pause" || this.mode === "challenge" ? 0 : dt,
       t,

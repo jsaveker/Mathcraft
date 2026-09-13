@@ -10,13 +10,21 @@ import {
   finishQuest,
   describeQuest,
 } from "./quests.js";
+import { WORLDS, createRound, hintFor } from "./maths.js";
+
 import {
-  WORLDS,
-  readSave,
-  persistSave,
-  createRound,
-  hintFor,
-} from "./maths.js";
+  loadFamily,
+  activeProfile,
+  persistFamily,
+  addProfile,
+  profileName,
+  AVATARS,
+  FAMILY_KEY,
+  recordBuilding,
+  claimDiscovery,
+} from "./profiles.js";
+import { avatarArt, escapeHtml } from "./explorer-art.js";
+import { LANDMARKS } from "./biomes.js";
 
 const icons = {
   heart:
@@ -47,7 +55,11 @@ const icon = (name, cls = "") =>
   `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.spark}</svg>`;
 const cubeArt = (theme = "meadow") =>
   `<svg viewBox="0 0 90 82" class="island-icon ${theme}" aria-hidden="true"><path class="soil-face" d="m12 43 33-18 33 18v18L45 79 12 61Z"/><path class="side-face" d="M45 61v18L12 61V43Z"/><path class="grass-face" d="m12 43 33-18 33 18-33 18Z"/><path fill="#8f694e" d="M40 40V21h8v20l-4 3Z"/><path class="leaf-face" d="m27 14 17-9 18 9v18l-18 9-17-9Z"/><path class="top-face" d="m27 14 17-9 18 9-18 10Z"/><path fill="#ffffff" opacity=".2" d="m44 24 18-10v18l-18 9Z"/></svg>`;
-const save = readSave();
+let family = loadFamily();
+let profile = activeProfile(family);
+let save = profile.progress;
+let villageMode = false;
+let landmarkReveal = false;
 let selected = 0,
   round = null,
   activeChallenge = -1,
@@ -94,8 +106,18 @@ function sound(kind) {
   }
 }
 function saveNow() {
-  if (!persistSave(save))
-    toast("Your browser cannot save progress right now. You can still play.");
+  const result = persistFamily(family);
+  if (result !== "saved")
+    toast(
+      result === "conflict"
+        ? "Another tab has a newer save. Reload this page before continuing."
+        : "Your browser cannot save right now. Keep this page open to avoid losing changes.",
+    );
+  $("#save-status").textContent =
+    result === "saved"
+      ? "Village, builds & progress saved on this device"
+      : "Changes are not saved — check browser storage";
+  $("#save-status").classList.toggle("save-warning", result !== "saved");
   updateStats();
 }
 
@@ -104,14 +126,14 @@ document.querySelector("#app").innerHTML = `
    <header class="site-header">
      <a class="brand" href="#" aria-label="Mathcraft home"><span class="brand-cube">${icon("cube")}</span><span>mathcraft<span class="brand-dot">.</span><small>SMALL NUMBERS. BIG WORLDS.</small></span></a>
      <nav class="main-nav" aria-label="Main navigation"><button class="nav-item active" id="nav-play">Play<span></span></button><button class="nav-item" id="nav-worlds">Your worlds</button><button class="nav-item" id="nav-how">How to play</button></nav>
-     <div class="header-right"><span class="crystal-count">${icon("diamond")}<b id="total-crystals">0</b></span><button id="settings-home" class="icon-button parent-button" aria-label="Parent settings">${icon("settings")}</button><span class="avatar" aria-hidden="true"><i></i></span></div>
+     <div class="header-right"><span class="crystal-count">${icon("diamond")}<b id="total-crystals">0</b></span><button id="settings-home" class="icon-button parent-button" aria-label="Parent settings">${icon("settings")}</button><button class="explorer-chip" id="explorers" aria-label="Switch explorer"></button></div>
    </header>
    <section class="hero" aria-labelledby="hero-title">
      <div class="eyebrow"><span class="live-dot"></span> AN ADVENTURE THAT ADDS UP</div>
      <h1 id="hero-title">Big adventures.<br>Little <span>numbers.</span></h1>
      <p class="hero-description">Build a bridge. Feed a friend. Make an island bloom.<br>A little maths can make a big difference.</p>
      <button class="primary-button hero-play" id="start-adventure">Let's play ${icon("arrow")}</button>
-     <div class="play-note"><span class="tiny-cube">${icon("cube")}</span> Explore. Solve. Build. Repeat.</div>
+     <button class="village-entry" id="visit-village">${icon("home")} <span>My village<small>Your own place to build & keep</small></span>${icon("arrow")}</button><div class="play-note" id="save-status">Village, builds & progress saved on this device</div>
      <div class="learning-tags"><span><b>+</b> Addition</span><span><b>−</b> Subtraction</span><span id="range-tag">Up to 100</span></div>
    </section>
    <div class="scene-caption"><span class="caption-line"></span><span id="scene-biome">01 / THE GRASSLANDS</span></div>
@@ -126,7 +148,7 @@ document.querySelector("#app").innerHTML = `
    <div id="crosshair" aria-hidden="true">+</div>
    <button id="interaction" class="interact-prompt" hidden><kbd>E</kbd> <span>Solve the number crystal</span></button>
    <div class="hotbar-wrap"><div class="build-label" id="build-label">YOUR EXPLORER'S KIT <span>Press B to build</span></div><div class="hotbar"><button class="tool-slot selected" data-slot="0" aria-label="Select grass block"><kbd>1</kbd><span class="block-icon grass-block"></span></button><button class="tool-slot" data-slot="1" aria-label="Select wood block"><kbd>2</kbd><span class="block-icon wood-block"></span></button><button class="tool-slot" data-slot="2" aria-label="Select crystal block"><kbd>3</kbd><span class="block-icon crystal-block"></span></button><span class="stock-label"><b id="block-stock">12</b> blocks</span><button class="build-button" id="build-toggle">${icon("cube")} Build</button></div></div>
-   <div class="controls-strip"><span><kbd>W A S D</kbd> Move</span><span><i class="mouse-icon"></i> Look</span><span><kbd>SPACE</kbd> Jump</span><span><kbd>E</kbd> Explore</span><span><kbd>ESC</kbd> Pause</span></div>
+   <div class="travel-tools"><button id="game-village">${icon("home")} Village <kbd>V</kbd></button><button id="landmark-guide">${icon("spark")} Discover <kbd>L</kbd></button><button id="game-profiles" aria-label="Switch explorer">${icon("settings")}</button></div><div class="controls-strip"><span><kbd>W A S D</kbd> Move</span><span><i class="mouse-icon"></i> Look</span><span><kbd>SPACE</kbd> Jump</span><span><kbd>E</kbd> Explore</span><span><kbd>ESC</kbd> Pause</span></div>
    <div class="touch-controls"><div class="dpad"><button data-move="forward" aria-label="Move forward">▲</button><button data-move="left" aria-label="Move left">◀</button><button data-move="back" aria-label="Move backward">▼</button><button data-move="right" aria-label="Move right">▶</button></div><div class="touch-actions"><button id="touch-place">Place</button><button id="touch-mine">Mine</button><button id="touch-jump">Jump ↑</button></div></div>
  </section>
  <section id="quest-reveal" hidden aria-label="Your maths changed the island"><div class="reveal-card"><div class="eyebrow">LOOK WHAT YOU MADE HAPPEN</div><h2 id="reveal-title"></h2><p id="reveal-description"></p><button class="primary-button" id="finish-reveal">Keep exploring ${icon("arrow")}</button></div></section>
@@ -138,6 +160,10 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 function updateStats() {
   $("#total-crystals").textContent = save.totalCrystals;
+  $("#explorers").innerHTML =
+    `${avatarArt(profile.avatar)}<span>${escapeHtml(profile.name)}</span>`;
+  $("#visit-village span").innerHTML =
+    `${escapeHtml(profile.name)}’s village<small>${(profile.builds.village || []).length} blocks built · ${profile.inventory} in your kit</small>`;
   $("#range-tag").textContent = `Up to ${save.range}`;
   $("#sound-home").innerHTML =
     `${icon(save.sound ? "sound" : "mute")} Sound ${save.sound ? "on" : "off"}`;
@@ -167,7 +193,7 @@ function renderCards() {
         return;
       }
       selected = i;
-      world?.loadTheme(WORLDS[i].id);
+      previewWorld();
       $("#scene-biome").textContent = `0${i + 1} / ${WORLDS[i].biome}`;
       renderCards();
       sound("tap");
@@ -199,6 +225,24 @@ function bindClose(resume = true) {
   $("#modal-close")?.addEventListener("click", () => closeModal(resume));
 }
 function updateHud() {
+  $("#landmark-guide").hidden = villageMode;
+  $(".minimap").classList.toggle("village-map", villageMode);
+  $("#game-village").innerHTML =
+    `${icon(villageMode ? "compass" : "home")} ${villageMode ? "Adventures" : "Village"} <kbd>V</kbd>`;
+  if (villageMode) {
+    $("#round-crystals").textContent = save.totalCrystals;
+    $("#quest-title").textContent = `${profile.name}’s village`;
+    $("#quest-description").textContent =
+      "Your creations stay here. Build on an open plot, then explore the islands to earn more materials.";
+    $("#quest-crystals").innerHTML = avatarArt(profile.avatar);
+    $("#quest-supplies").innerHTML =
+      `${icon("check")} <span>${world.blocks.size} / 600 blocks built · autosaved</span>`;
+    $("#guide").innerHTML =
+      `${icon("compass")} G · Take me to the building plots`;
+    $("#block-stock").textContent = world.blockStock;
+    $(".map-label").textContent = "HOME VILLAGE";
+    return;
+  }
   const count = round.collected.filter(Boolean).length;
   const next = activeQuest(round.collected);
   const quest = QUESTS[next];
@@ -228,13 +272,14 @@ function updateHud() {
   $(".map-label").textContent = WORLDS[selected].name.toUpperCase();
 }
 function startGame() {
+  villageMode = false;
   sound("tap");
   round = createRound(save, WORLDS[selected].id);
   saveNow();
   $("#home-screen").hidden = true;
   $("#game-hud").hidden = false;
   currentScreen = "play";
-  world.start(WORLDS[selected].id, round);
+  world.start(WORLDS[selected].id, round, buildingFor(WORLDS[selected].id));
   updateHud();
   setBuild(false);
   if (firstSession) {
@@ -362,6 +407,7 @@ function submitAnswer() {
     $("#quest-reveal").hidden = false;
     $("#reveal-title").textContent = QUESTS[index].success;
     $("#reveal-description").textContent = QUESTS[index].effect;
+    landmarkReveal = false;
     world.showReward(index);
     $("#finish-reveal").focus();
   };
@@ -369,18 +415,21 @@ function submitAnswer() {
 function pause() {
   if (currentScreen !== "play" || $("#modal").open) return;
   showModal(
-    `${modalClose("Resume game")}<div class="modal-emblem mint">${icon("cube")}</div><div class="eyebrow centered">TAKE A BREATHER</div><h2 id="modal-title">Your adventure can wait.</h2><p class="modal-description">Your completed island jobs are saved.<br>The island will be right here.</p><button class="primary-button wide" id="resume-game">Keep exploring ${icon("play")}</button><div class="pause-links"><button id="pause-help">${icon("help")} Controls & help</button><button id="pause-settings">${icon("settings")} Parent settings</button><button id="go-home">${icon("home")} Back to islands</button></div>`,
+    `${modalClose("Resume game")}<div class="modal-emblem mint">${icon("cube")}</div><div class="eyebrow centered">TAKE A BREATHER</div><h2 id="modal-title">Your adventure can wait.</h2><p class="modal-description">Your builds, blocks, and maths progress are saved.<br>This world belongs to ${escapeHtml(profile.name)}.</p><button class="primary-button wide" id="resume-game">Keep exploring ${icon("play")}</button><div class="pause-links"><button id="pause-help">${icon("help")} Controls & help</button><button id="pause-settings">${icon("settings")} Parent settings</button><button id="pause-profiles">${icon("settings")} Switch explorer</button><button id="go-home">${icon("home")} Back to islands</button></div>`,
   );
   bindClose();
   $("#resume-game").onclick = () => closeModal();
   $("#pause-help").onclick = () => showHelp();
   $("#pause-settings").onclick = () => showSettings();
   $("#go-home").onclick = goHome;
+  $("#pause-profiles").onclick = showProfiles;
 }
 function goHome() {
   closeModal(false);
   currentScreen = "home";
+  villageMode = false;
   world.setMode("home");
+  previewWorld();
   $("#home-screen").hidden = false;
   $("#game-hud").hidden = true;
   renderCards();
@@ -406,7 +455,7 @@ function showSettings() {
       )
       .join(
         "",
-      )}</div></fieldset><div class="setting-row"><div><b>A little sound</b><small>Gentle notes for discoveries and answers</small></div><label class="toggle"><input type="checkbox" id="settings-sound" aria-label="Enable sound" ${save.sound ? "checked" : ""}><span></span></label></div><div class="progress-summary"><span><b>${save.solved}</b> puzzles solved</span><span><b>${save.completed.length} / 3</b> worlds completed</span></div><p class="privacy-note">Progress stays in this browser. No accounts or tracking.<br>Number settings apply to your next adventure. Building is for this visit.</p><button class="primary-button wide" id="save-settings">Save settings ${icon("check")}</button>`,
+      )}</div></fieldset><div class="setting-row"><div><b>A little sound</b><small>Gentle notes for discoveries and answers</small></div><label class="toggle"><input type="checkbox" id="settings-sound" aria-label="Enable sound" ${save.sound ? "checked" : ""}><span></span></label></div><div class="progress-summary"><span><b>${save.solved}</b> puzzles solved</span><span><b>${save.completed.length} / 3</b> worlds completed</span></div><p class="privacy-note">Progress stays in this browser. No accounts or tracking.<br>Settings belong to ${escapeHtml(profile.name)}. Builds and materials are saved between visits.</p><button class="primary-button wide" id="save-settings">Save settings ${icon("check")}</button>`,
   );
   bindClose(currentScreen === "play");
   $("#save-settings").onclick = () => {
@@ -419,7 +468,7 @@ function showSettings() {
   };
 }
 function complete() {
-  if (!round.collected.every(Boolean)) return;
+  if (villageMode || !round.collected.every(Boolean)) return;
   round.finished = true;
   const id = WORLDS[selected].id;
   if (!save.completed.includes(id)) save.completed.push(id);
@@ -453,7 +502,7 @@ function setBuild(enabled) {
     ? "MAKE A LITTLE SOMETHING <span>Right click: place · Left click: mine</span>"
     : "YOUR EXPLORER’S KIT <span>Press B to build</span>";
 }
-function updatePosition({ x, z, yaw, nearby, portal }) {
+function updatePosition({ x, z, yaw, nearby, portal, landmark }) {
   const player = $("#map-player");
   player.style.left = `${50 + x * 1.55}%`;
   player.style.top = `${50 + z * 1.55}%`;
@@ -461,6 +510,15 @@ function updatePosition({ x, z, yaw, nearby, portal }) {
   const dirs = ["N", "NW", "W", "SW", "S", "SE", "E", "NE"];
   $("#heading").textContent =
     dirs[((Math.round(yaw / (Math.PI / 4)) % 8) + 8) % 8];
+  if (villageMode) {
+    $("#interaction").hidden = true;
+    return;
+  }
+  if (landmark) {
+    $("#interaction").hidden = false;
+    $("#interaction span").textContent = LANDMARKS[WORLDS[selected].id].action;
+    return;
+  }
   $("#interaction").hidden = nearby < 0 && !portal;
   $("#interaction span").textContent = portal
     ? "Step into the portal"
@@ -478,9 +536,192 @@ function finishReveal() {
   $("#game-hud").hidden = false;
   world.setMode("play");
   if (!matchMedia("(pointer: coarse)").matches) world.lock();
-  if (round.collected.every(Boolean))
+  if (!landmarkReveal && round?.collected.every(Boolean))
     toast("Five good deeds! Press G to visit your restored portal.");
 }
+function buildingFor(id) {
+  return {
+    blocks: profile.builds[id] || [],
+    inventory: profile.inventory,
+    discovered: profile.discoveries.includes(id),
+  };
+}
+function previewWorld() {
+  if (!world) return;
+  world.questRound = null;
+  world.collected = Array(5).fill(false);
+  world.loadTheme(WORLDS[selected].id);
+  world.restoreBuilding(buildingFor(WORLDS[selected].id));
+  $("#scene-biome").textContent =
+    `0${selected + 1} / ${WORLDS[selected].biome}`;
+}
+function startVillage() {
+  closeModal(false);
+  villageMode = true;
+  landmarkReveal = false;
+  currentScreen = "play";
+  $("#quest-reveal").hidden = true;
+  $("#home-screen").hidden = true;
+  $("#game-hud").hidden = false;
+  world.startVillage(buildingFor("village"));
+  setBuild(true);
+  updateHud();
+  if (!matchMedia("(pointer: coarse)").matches) world.lock();
+  toast(
+    "Welcome home! Build on any open plot. Every block and every material is saved.",
+  );
+}
+function showProfiles() {
+  if (currentScreen === "play") goHome();
+  showModal(
+    `${modalClose()}<div class="eyebrow centered">A WORLD OF YOUR OWN</div><h2 id="modal-title">Who’s exploring today?</h2><p class="modal-description">Each explorer has their own village, creations, maths settings, and discoveries.</p><div class="explorer-list">${family.profiles.map((p) => `<div class="explorer-row"><button class="explorer-select ${p.id === profile.id ? "chosen" : ""}" data-profile="${escapeHtml(p.id)}">${avatarArt(p.avatar)}<span><strong>${escapeHtml(p.name)}</strong><small>${p.progress.totalCrystals} crystals · ${p.builds.village?.length || 0} village blocks</small></span>${icon(p.id === profile.id ? "check" : "arrow")}</button><button class="icon-button" data-edit-profile="${escapeHtml(p.id)}" aria-label="Personalise ${escapeHtml(p.name)}">${icon("settings")}</button></div>`).join("")}</div>${family.profiles.length < 6 ? `<button class="primary-button wide" id="add-explorer">Add an explorer ${icon("spark")}</button>` : ""}<p class="privacy-note">Saved on this device. No account or email needed.<br>Everyone keeps their own progress and creations.</p>`,
+  );
+  bindClose(false);
+  $$("[data-profile]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        family.activeId = b.dataset.profile;
+        profile = activeProfile(family);
+        save = profile.progress;
+        selected = 0;
+        round = null;
+        firstSession = true;
+        saveNow();
+        closeModal(false);
+        previewWorld();
+        renderCards();
+        toast(`Welcome, ${profile.name}! Your village is waiting.`);
+      }),
+  );
+  $$("[data-edit-profile]").forEach(
+    (b) => (b.onclick = () => editProfile(b.dataset.editProfile)),
+  );
+  $("#add-explorer")?.addEventListener("click", () => editProfile());
+}
+function editProfile(id) {
+  const existing = family.profiles.find((p) => p.id === id);
+  showModal(
+    `${modalClose()}<div class="eyebrow centered">MEET YOUR EXPLORER</div><h2 id="modal-title">${existing ? "Make it yours." : "A new adventure begins."}</h2><form id="explorer-form"><label class="explorer-name-label" for="explorer-name">Explorer name</label><input class="explorer-name-input" id="explorer-name" name="name" maxlength="20" autocomplete="off" placeholder="Your name or nickname" value="${escapeHtml(existing?.name || "")}" required><fieldset class="avatar-picker"><legend>Choose your blocky explorer</legend>${AVATARS.map((a) => `<label><input type="radio" name="avatar" value="${a}" ${(existing?.avatar || "fox") === a ? "checked" : ""}>${avatarArt(a)}<span>${a[0].toUpperCase() + a.slice(1)}</span></label>`).join("")}</fieldset><button class="primary-button wide" type="submit">${existing ? "Save explorer" : "Let’s explore"} ${icon("arrow")}</button></form>`,
+  );
+  $("#modal-close").onclick = showProfiles;
+  $("#explorer-name").focus();
+  $("#explorer-form").onsubmit = (e) => {
+    e.preventDefault();
+    const name = profileName($("#explorer-name").value),
+      avatar = $("input[name=avatar]:checked").value;
+    if (existing) {
+      existing.name = name;
+      existing.avatar = avatar;
+      family.activeId = existing.id;
+    } else if (!addProfile(family, name, avatar)) return;
+    profile = activeProfile(family);
+    save = profile.progress;
+    selected = 0;
+    round = null;
+    firstSession = true;
+    saveNow();
+    closeModal(false);
+    previewWorld();
+    renderCards();
+    toast(
+      `${profile.name}’s world is ready. Start an adventure or visit your village.`,
+    );
+  };
+}
+function showLandmark() {
+  const id = WORLDS[selected].id,
+    site = LANDMARKS[id];
+  const known = profile.discoveries.includes(id);
+  showModal(
+    `${modalClose("Keep exploring")}<div class="eyebrow centered">${known ? "YOUR DISCOVERIES" : "A LITTLE OFF THE BEATEN PATH"}</div><h2 id="modal-title">${site.title}</h2><p class="modal-description">${site.description}</p><div id="landmark-activity"></div><p class="gentle-note">${known ? "Already discovered! You can enjoy it again whenever you like." : "Discover this place to earn 12 building blocks for your village."}</p>`,
+    "challenge",
+  );
+  bindClose();
+  const area = $("#landmark-activity");
+  if (known || id === "meadow") {
+    area.innerHTML = `<div class="landmark-emblem">${icon(id === "meadow" ? "spark" : "diamond")}</div><button class="primary-button wide" id="activate-landmark">${known ? "See it again" : "Turn the waterwheel"} ${icon("arrow")}</button>`;
+    $("#activate-landmark").onclick = finishLandmark;
+  } else if (id === "cavern") {
+    let step = 0;
+    area.innerHTML = `<p class="melody-instruction">Play the colours: <b>Mint → Violet → Gold</b></p><div class="melody-keys">${["Mint", "Violet", "Gold"].map((name, i) => `<button class="melody-key colour-${i}" data-note="${i}" aria-label="Play ${name.toLowerCase()} crystal">${icon("diamond")}<span>${name}</span></button>`).join("")}</div><p id="melody-feedback" class="gentle-note" role="status">Tap the mint crystal first.</p>`;
+    $$("[data-note]").forEach(
+      (b) =>
+        (b.onclick = () => {
+          sound("tap");
+          if (Number(b.dataset.note) !== step) {
+            step = 0;
+            $("#melody-feedback").textContent =
+              "Let’s start again with mint. Take your time.";
+            $$("[data-note]").forEach((k) => k.classList.remove("played"));
+            return;
+          }
+          b.classList.add("played");
+          step++;
+          $("#melody-feedback").textContent = `${step} / 3 notes glowing`;
+          if (step === 3) finishLandmark();
+        }),
+    );
+  } else {
+    const turns = [1, 2, 3],
+      names = ["outer", "middle", "inner"];
+    area.innerHTML = `<p class="melody-instruction">Turn each ring until its arrow points <b>up ↑</b>.</p><div class="sun-rings">${names.map((n, i) => `<button data-ring="${i}" aria-label="Turn ${n} ring"><span class="sun-ring-arrow" style="transform:rotate(${turns[i] * 90}deg)">↑</span><small>${n} ring</small></button>`).join("")}</div><p class="gentle-note" id="ring-feedback" role="status">Three sun rings, one direction.</p>`;
+    $$("[data-ring]").forEach(
+      (b) =>
+        (b.onclick = () => {
+          const i = Number(b.dataset.ring);
+          turns[i] = (turns[i] + 1) % 4;
+          b.querySelector(".sun-ring-arrow").style.transform =
+            `rotate(${turns[i] * 90}deg)`;
+          b.classList.toggle("aligned", turns[i] === 0);
+          sound("tap");
+          $("#ring-feedback").textContent =
+            `${turns.filter((t) => t === 0).length} / 3 rings aligned`;
+          if (turns.every((t) => t === 0)) finishLandmark();
+        }),
+    );
+  }
+}
+function finishLandmark() {
+  const id = WORLDS[selected].id;
+  if (claimDiscovery(profile, id)) {
+    world.blockStock = profile.inventory;
+    world.changedBuilding();
+  }
+  updateHud();
+  world.biome.activate(true);
+  closeModal(false);
+  world.setMode("reward");
+  world.rewardView = world.biome.camera();
+  landmarkReveal = true;
+  $("#game-hud").hidden = true;
+  $("#quest-reveal").hidden = false;
+  $("#reveal-title").textContent = {
+    meadow: "Let the waterfall flow!",
+    cavern: "You woke the northern lights!",
+    sunset: "The sun gate is opening!",
+  }[id];
+  $("#reveal-description").textContent =
+    "Discovery saved. Those building blocks are ready for your next creation.";
+  $("#finish-reveal").focus();
+}
+$("#explorers").onclick = showProfiles;
+$("#game-profiles").onclick = showProfiles;
+$("#visit-village").onclick = startVillage;
+$("#game-village").onclick = () => (villageMode ? goHome() : startVillage());
+$("#landmark-guide").onclick = () => world.guideLandmark();
+window.addEventListener("storage", (e) => {
+  if (e.key !== FAMILY_KEY || !e.newValue) return;
+  try {
+    if (JSON.parse(e.newValue).revision <= family.revision) return;
+  } catch {
+    return;
+  }
+  showModal(
+    `<h2 id="modal-title">Your explorer moved to another tab.</h2><p class="modal-description">Reload to use the latest saved village and progress.</p><button class="primary-button wide" id="reload-save">Load the latest save</button>`,
+  );
+  $("#reload-save").onclick = () => location.reload();
+});
+
 $("#finish-reveal").onclick = finishReveal;
 window.addEventListener("keydown", (e) => {
   if (e.code === "Escape" && !$("#quest-reveal").hidden) {
@@ -543,6 +784,17 @@ renderCards();
 try {
   world = new IslandWorld($("#world"), {
     challenge: interactQuest,
+    village: () => (villageMode ? goHome() : startVillage()),
+    villageHelp: () =>
+      toast(
+        "Press B to build. Right click places a block; left click mines your blocks. Every change is saved.",
+      ),
+    landmark: showLandmark,
+    building: (id, state) => {
+      recordBuilding(profile, id, state.blocks, state.inventory);
+      saveNow();
+      if (villageMode) updateHud();
+    },
     complete,
     pause,
     tip: toast,
@@ -561,6 +813,11 @@ try {
     },
   });
   $("#loading").remove();
+  previewWorld();
+  if (family.revision === 0) {
+    saveNow();
+    showProfiles();
+  }
 } catch (error) {
   console.error("Mathcraft could not initialise the 3D world.", error);
   $("#loading").innerHTML =
