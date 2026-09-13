@@ -111,3 +111,58 @@ test("touch movement uses the same direction and speed as keyboard movement", ()
   tick(w, 60);
   assert.ok(w.player.z < -4.6 && w.player.z > -4.8);
 });
+
+test("creative flight rises, descends, respects the height cap and lands on the ground", () => {
+  const w = fixture();
+  w.isVillage = true;
+  w.toggleFlight();
+  w.keys.add("Space");
+  tick(w, 60);
+  assert.ok(w.player.y > 10 && w.player.y < 10.3);
+  tick(w, 900);
+  assert.equal(w.player.y, 84);
+  w.keys.clear();
+  w.keys.add("ShiftLeft");
+  tick(w, 900);
+  assert.equal(w.player.y, 3.2);
+  w.keys.clear();
+  w.toggleFlight();
+  assert.equal(w.flying, false);
+});
+test("descending from a tall build cannot tunnel through player-built floors", () => {
+  const w = fixture();
+  w.isVillage = true;
+  w.flying = true;
+  w.player.y = 22.3;
+  const block = { position: new THREE.Vector3(0, 20, 0) };
+  w.blocks.set("floor", block);
+  w.voxels = { nearby: () => [block] };
+  w.keys.add("ShiftLeft");
+  tick(w, 120);
+  assert.equal(w.player.y, 22.2);
+});
+test("flying cannot ascend through a low roof and pause freezes vertical movement", () => {
+  const w = fixture();
+  w.isVillage = true;
+  w.flying = true;
+  w.voxels = { nearby: () => [{ position: new THREE.Vector3(0, 5, 0) }] };
+  w.keys.add("Space");
+  tick(w, 60);
+  assert.ok(w.player.y < 4.5);
+  const height = w.player.y;
+  w.mode = "pause";
+  tick(w, 60);
+  assert.equal(w.player.y, height);
+});
+test("flight only belongs to the village and elevated flying passes above scenery", () => {
+  const w = fixture();
+  w.toggleFlight();
+  assert.ok(!w.flying);
+  w.isVillage = true;
+  w.flying = true;
+  w.player.y = 12;
+  w.colliders.push({ x: 0, z: -2, w: 2, d: 1 });
+  w.keys.add("KeyW");
+  tick(w, 30);
+  assert.ok(w.player.z < -3.9);
+});

@@ -1,6 +1,6 @@
 # Mathcraft — Number Islands
 
-A playable, original voxel adventure for practising addition and subtraction. Explore five floating worlds with 25 different projects, from a farm rescue to a rocket launch. Correct answers visibly change the world and earn materials for a permanent home village. Each explorer has separate progress, builds, settings, and a blocky avatar.
+A playable, original voxel adventure for practising addition and subtraction. Explore five floating worlds with 25 different projects, from a farm rescue to a rocket launch. Correct answers visibly change the world and earn materials for building during adventures. A permanent creative village offers unlimited materials, flight and TNT. Each explorer has separate progress, builds, settings, and a blocky avatar.
 
 ## Run locally
 
@@ -40,7 +40,7 @@ npm run preview
 
 On touchscreens, use the direction pad, drag the world to look, and use the on-screen jump, interaction, and building buttons. Desktop is the primary play experience. In-app browsers that restrict pointer lock use drag-to-look automatically.
 
-The island edge prevents falling. Scenery is preserved; players can mine their own placed blocks. Each new explorer starts with 36 blocks. Every correct answer earns 3 more, and each island landmark awards 12 blocks once per explorer. Up to 600 placed blocks can be saved on each island or in the home village.
+The island edge prevents falling. Scenery is preserved; players can mine their own placed blocks. Each new explorer starts with 36 blocks. Every correct answer earns 3 more, and each island landmark awards 12 blocks once per explorer. Adventure islands each save up to 600 placed blocks. The creative village has unlimited materials and saves up to 8,000 blocks, with a height limit of 80 and an island roughly 72 blocks across. Village building and mining never change earned adventure materials.
 
 ## Maths and progress
 
@@ -72,7 +72,26 @@ The controls and addition/subtraction puzzles stay familiar. Each project change
 
 ## Your village and discoveries
 
-Use **My village** on the welcome screen or **V** during an adventure. Each explorer owns a green island with open building plots, an entrance arch, and a fountain. Place blocks freely, stack them into structures, and mine your own blocks to recover materials. Builds on the adventure islands also stay saved when travelling or starting another puzzle round.
+Use **My village** on the welcome screen or **V** during an adventure. Each explorer owns a green island with open building plots, an entrance arch, and a fountain. Use 36 block types including bricks, logs, glass, coloured cubes, glowstone, ice and TNT. Choose nine favourites for your hotbar; favourites and creations are saved separately for each explorer. Builds on the adventure islands also stay saved when travelling or starting another puzzle round.
+
+Creative controls:
+
+| Control             | Village action                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| E or I              | Open the block library; choose a replacement for the selected hotbar slot             |
+| 1–9                 | Select a favourite block                                                              |
+| T                   | Choose single blocks, a line, wall, floor, or a cottage/castle/tower/rocket blueprint |
+| Right click / Place | Build; hold right click to repeat single blocks                                       |
+| Left click / Mine   | Remove player-built blocks; hold when mouse capture is active                         |
+| F                   | Toggle flight; Space/up ascends, Shift/down descends                                  |
+| R                   | Rotate a blueprint before placing                                                     |
+| Q / Light TNT       | Light the aimed TNT block’s three-second fuse                                         |
+| Z / Undo            | Undo the last action, stop a fuse, or restore an entire blast                         |
+| Y / Redo            | Redo an undone action                                                                 |
+
+Lines, walls and floors use two placed corners, up to 24 blocks apart. Flying permits midair placement. A wireframe previews the design, turning red if the free cells cannot fit. Blueprints preserve existing blocks in overlapping cells. Each brush, blueprint and TNT chain counts as one undo action; history retains 24 actions during the current village visit and resets on leaving or reloading.
+
+TNT clears player-built cubes within 4.5 blocks and triggers nearby TNT. Terrain and village scenery remain intact. There is no player damage. Fuses pause in menus and stop when leaving; completed damage is autosaved even during a longer chain. Explosions use procedural particles and sound, with fewer particles for reduced-motion preferences. The sound toggle applies to explosions too. Restored blocks cannot trap the explorer: overlapping builds lift them onto the highest block at that position.
 
 The first three islands also have optional landmarks. Use **Discover / L**, then **E**:
 
@@ -88,6 +107,10 @@ The first explorer inherits the original game’s maths progress and unlocks. Th
 
 [Three.js WebGLRenderer](https://threejs.org/docs/pages/WebGLRenderer.html) renders the world. Instanced blocks reduce draw calls. Terrain, textures, trees, structures, clouds, animals, portal effects, and audio are generated in code. The UI uses HTML/CSS and native dialogs. Vite builds the application. Fonts are Outfit and DM Sans, distributed through Fontsource under the SIL Open Font License; their licence files are included in the dependencies.
 
+- `src/blocks.js`: stable block palette, saved hotbar validation, brushes and blueprints.
+- `src/voxel-build.js`: instanced construction meshes and spatial ray/collision lookup.
+- `src/creative-builder.js`: creative tools, previews, transactional undo and TNT chains.
+- `src/build-materials.js`: procedural block textures and glass/glowing materials.
 - `src/world.js`: scene, terrain, input, movement, collisions, building, particles, and portal.
 - `src/maths.js`: world catalogue, rounds, save validation, persistence, and hints.
 - `src/learning.js`: bounded skill progression, question bands, and persistent answer evidence.

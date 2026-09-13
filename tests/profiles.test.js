@@ -157,12 +157,12 @@ test("families support six separate explorers and refuse a seventh", () => {
   assert.equal(addProfile(f, "Seventh", "fox"), null);
   assert.equal(f.profiles.length, 6);
 });
-test("actual block placement, restoration, and mining conserve the saved inventory", () => {
+test("adventure block placement, restoration, and mining conserve the saved inventory", () => {
   const p = activeProfile(loadFamily(storage()));
   const w = Object.assign(Object.create(IslandWorld.prototype), {
     mode: "play",
-    isVillage: true,
-    themeId: "village",
+    isVillage: false,
+    themeId: "meadow",
     buildMode: true,
     blockStock: 36,
     selectedBlock: 1,
@@ -185,13 +185,13 @@ test("actual block placement, restoration, and mining conserve the saved invento
   });
   w.placeBlock();
   assert.equal(p.inventory, 35);
-  assert.deepEqual(p.builds.village, [{ x: 2, y: 2, z: 2, type: 1 }]);
-  w.restoreBuilding({ blocks: p.builds.village, inventory: p.inventory });
+  assert.deepEqual(p.builds.meadow, [{ x: 2, y: 2, z: 2, type: 1 }]);
+  w.restoreBuilding({ blocks: p.builds.meadow, inventory: p.inventory });
   assert.equal(w.blocks.size, 1);
   w.blockTarget = () => ({ placed: { object: [...w.blocks.values()][0] } });
   w.mineBlock();
   assert.equal(p.inventory, 36);
-  assert.deepEqual(p.builds.village, []);
+  assert.deepEqual(p.builds.meadow, []);
 });
 test("world geography differs without moving the bridge and core quest floor", () => {
   assert.ok(

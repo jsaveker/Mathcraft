@@ -4,6 +4,15 @@ import { QuestWorld } from "./quest-world.js";
 import { AdventureWorld } from "./adventure-world.js";
 import { BiomeWorld, terrainLevel } from "./biomes.js";
 import { MAX_BLOCKS } from "./profiles.js";
+import {
+  CREATIVE_RADIUS,
+  CREATIVE_HEIGHT,
+  DEFAULT_HOTBAR,
+  cleanHotbar,
+} from "./blocks.js";
+import { VoxelBuild } from "./voxel-build.js";
+import { CreativeBuilder } from "./creative-builder.js";
+import { installBuildMaterials } from "./build-materials.js";
 
 const THEMES = {
   sky: {
@@ -75,6 +84,8 @@ export class IslandWorld {
     this.blockStock = 12;
     this.buildMode = false;
     this.selectedBlock = 0;
+    this.selectedSlot = 0;
+    this.reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
     this.blocks = new Map();
     this.elapsed = 0;
     this.lookYaw = 0;
@@ -175,6 +186,13 @@ export class IslandWorld {
     });
   }
   loadTheme(id) {
+    this.builder?.dispose();
+    this.builder = null;
+    this.voxels?.dispose();
+    this.voxels = null;
+    this.heldBuild = null;
+    this.flying = false;
+    this.flyVertical = 0;
     if (this.root) {
       this.scene.remove(this.root);
       const mats = new Set(),
@@ -186,6 +204,7 @@ export class IslandWorld {
             mats.add(m),
           );
       });
+      Object.values(this.mats || {}).forEach((m) => mats.add(m));
       geos.forEach((g) => g.dispose());
       mats.forEach((m) => {
         m.map?.dispose();
@@ -258,11 +277,13 @@ export class IslandWorld {
         roughness: 0.55,
       }),
     });
-    for (let x = -22; x <= 22; x++)
-      for (let z = -21; z <= 22; z++) {
+    if (this.isVillage) installBuildMaterials(this);
+    const extent = this.isVillage ? CREATIVE_RADIUS + 1 : 22;
+    for (let x = -extent; x <= extent; x++)
+      for (let z = this.isVillage ? -extent : -21; z <= extent; z++) {
         const edge = Math.sqrt((x / 1.04) ** 2 + z * z);
         const wobble = Math.sin(x * 0.48) * 0.7 + Math.cos(z * 0.6) * 0.7;
-        if (edge > 21 + wobble) continue;
+        if (edge > (this.isVillage ? CREATIVE_RADIUS : 21) + wobble) continue;
         const y = terrainLevel(
           id,
           x,
@@ -707,10 +728,28 @@ export class IslandWorld {
       )
         e.preventDefault();
       if (e.repeat) return;
-      if (e.code === "Space") this.jump();
+      if (e.code === "Space" && !this.flying) this.jump();
       if (e.code === "KeyE") {
         e.preventDefault();
         this.interact();
+      }
+      if (this.isVillage) {
+        if (e.code === "KeyF") this.toggleFlight();
+        if (e.code === "KeyI") this.callbacks.palette?.();
+        if (e.code === "KeyT") this.callbacks.tools?.();
+        if (e.code === "KeyQ") this.igniteTNT();
+        if (e.code === "KeyZ") {
+          e.preventDefault();
+          this.builder.undo();
+        }
+        if (e.code === "KeyY") {
+          e.preventDefault();
+          this.builder.redo();
+        }
+        if (e.code === "KeyR") {
+          this.builder.rotation = (this.builder.rotation + 1) % 4;
+          this.callbacks.creative?.();
+        }
       }
       if (e.code === "KeyG") this.guide();
       if (e.code === "KeyV") this.callbacks.village?.();
@@ -721,10 +760,7 @@ export class IslandWorld {
       }
       if (e.code.startsWith("Digit")) {
         const n = Number(e.code.slice(-1));
-        if (n >= 1 && n <= 3) {
-          this.selectedBlock = n - 1;
-          this.callbacks.blockSelect?.(n - 1);
-        }
+        if (n >= 1 && n <= (this.isVillage ? 9 : 3)) this.selectSlot(n - 1);
       }
       if (e.code === "Escape") this.callbacks.pause?.();
     });
@@ -736,10 +772,18 @@ export class IslandWorld {
       if (this.buildMode && e.pointerType !== "touch") {
         if (e.button === 2) {
           this.placeBlock();
+          if (this.isVillage && this.builder.mode === "single") {
+            this.heldBuild = "place";
+            this.buildRepeat = 0;
+          }
           return;
         }
         if (document.pointerLockElement === canvas && e.button === 0) {
           this.mineBlock();
+          if (this.isVillage) {
+            this.heldBuild = "mine";
+            this.buildRepeat = 0;
+          }
           return;
         }
       }
@@ -755,10 +799,18 @@ export class IslandWorld {
       }
     });
     canvas.addEventListener("pointerup", () => {
+      this.heldBuild = null;
       if (this.drag?.mine && this.drag.moved < 5) this.mineBlock();
       this.drag = null;
     });
-    canvas.addEventListener("pointercancel", () => (this.drag = null));
+    canvas.addEventListener("pointercancel", () => {
+      this.drag = null;
+      this.heldBuild = null;
+    });
+    window.addEventListener("pointerup", () => {
+      this.heldBuild = null;
+      this.flyVertical = 0;
+    });
     document.addEventListener("pointermove", (e) => {
       if (this.mode !== "play") return;
       let dx = 0,
@@ -797,6 +849,8 @@ export class IslandWorld {
   }
   setMode(mode) {
     this.mode = mode;
+    this.heldBuild = null;
+    this.flyVertical = 0;
     this.keys.clear();
     this.drag = null;
     this.touchMove = { x: 0, z: 0 };
@@ -817,6 +871,7 @@ export class IslandWorld {
     this.lookPitch = -0.1;
     this.velocityY = 0;
     this.buildMode = false;
+    this.selectSlot(0);
     this.setMode("play");
   }
   startVillage(building) {
@@ -825,17 +880,30 @@ export class IslandWorld {
     this.loadTheme("village");
     this.restoreBuilding(building);
     this.player.set(0, 3.2, 13);
+    this.ensureBuildClearance();
     this.lookYaw = 0;
     this.lookPitch = -0.12;
     this.velocityY = 0;
     this.buildMode = true;
+    this.selectSlot(0);
     this.setMode("play");
   }
   restoreBuilding(building) {
+    this.voxels?.dispose();
+    this.voxels = null;
     for (const block of this.blocks.values()) block.removeFromParent();
     this.blocks.clear();
     this.blockStock = building?.inventory ?? 36;
+    if (this.isVillage) {
+      this.voxels = new VoxelBuild(this);
+      this.builder ??= new CreativeBuilder(this);
+      this.hotbar = cleanHotbar(building?.hotbar);
+    }
     for (const b of building?.blocks || []) {
+      if (this.voxels) {
+        this.voxels.add(b);
+        continue;
+      }
       const m = this.mesh(["grass1", "plank", "glow"][b.type], b.x, b.y, b.z);
       m.userData.blockType = b.type;
       m.userData.blockKey = `${b.x},${b.y},${b.z}`;
@@ -857,6 +925,57 @@ export class IslandWorld {
   }
   changedBuilding() {
     this.callbacks.building?.(this.themeId, this.buildingState());
+  }
+  selectSlot(slot) {
+    this.selectedSlot = slot;
+    this.selectedBlock = this.isVillage
+      ? (this.hotbar || DEFAULT_HOTBAR)[slot]
+      : slot;
+    this.callbacks.blockSelect?.(slot);
+    this.callbacks.creative?.();
+  }
+  ensureBuildClearance() {
+    if (!this.voxels) return;
+    const column = this.voxels
+      .nearby(this.player.x, this.player.z)
+      .filter(
+        (m) =>
+          Math.abs(m.position.x - this.player.x) < 0.75 &&
+          Math.abs(m.position.z - this.player.z) < 0.75,
+      );
+    if (
+      column.some(
+        (m) =>
+          this.player.y > m.position.y - 0.5 &&
+          this.player.y - 1.7 < m.position.y + 0.5,
+      )
+    ) {
+      this.player.y = Math.max(...column.map((m) => m.position.y + 2.2));
+      this.velocityY = 0;
+    }
+  }
+  toggleFlight() {
+    if (!this.isVillage) return;
+    this.flying = !this.flying;
+    this.velocityY = 0;
+    this.callbacks.creative?.();
+    this.callbacks.tip?.(
+      this.flying
+        ? "Flying! Space goes up. Shift goes down. F lands."
+        : "Back on foot. Space jumps.",
+    );
+  }
+  igniteTNT() {
+    if (!this.isVillage || this.mode !== "play") return;
+    const m = this.blockTarget()?.placed?.object;
+    if (!this.builder.ignite(m))
+      this.callbacks.tip?.(
+        "Aim at a TNT block you placed, then press Q to light its fuse.",
+      );
+    else
+      this.callbacks.tip?.(
+        "Fuse lit! The blast clears nearby built blocks. Z stops or undoes it.",
+      );
   }
   guideLandmark() {
     if (this.isVillage) {
@@ -890,7 +1009,7 @@ export class IslandWorld {
   interact() {
     if (this.mode !== "play") return;
     if (this.isVillage) {
-      this.callbacks.villageHelp?.();
+      this.callbacks.palette?.();
       return;
     }
     if (this.biome?.nearby(this.player.x, this.player.z)) {
@@ -912,6 +1031,7 @@ export class IslandWorld {
   guide() {
     if (this.isVillage) {
       this.player.set(0, 3.2, 6);
+      this.ensureBuildClearance();
       this.lookYaw = -Math.PI / 2;
       this.lookPitch = -0.25;
       this.velocityY = 0;
@@ -962,7 +1082,7 @@ export class IslandWorld {
     this.changedBuilding();
   }
   burst(pos, count = 35) {
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < Math.min(count, 300 - this.particles.length); i++) {
       const m = new THREE.Mesh(
         this.geo,
         this.mats[i % 3 === 0 ? "gold" : "glow"],
@@ -983,12 +1103,12 @@ export class IslandWorld {
   }
   blockTarget() {
     this.ray.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-    const placed = this.ray.intersectObjects(
-      [...this.blocks.values()],
-      false,
-    )[0];
+    this.ray.far = this.isVillage ? 14 : 6;
+    const placed = this.voxels
+      ? this.voxels.hit(this.ray)
+      : this.ray.intersectObjects([...this.blocks.values()], false)[0];
     let terrainHit = null;
-    for (let t = 0.5; t < 6; t += 0.1) {
+    for (let t = 0.5; t < this.ray.far; t += 0.1) {
       const p = this.ray.ray.at(t, new THREE.Vector3());
       const height = this.heightAt(p.x, p.z);
       if (p.y <= height) {
@@ -1000,19 +1120,13 @@ export class IslandWorld {
       ? { placed }
       : terrainHit
         ? { terrain: terrainHit }
-        : null;
+        : this.isVillage && this.flying
+          ? { air: { point: this.ray.ray.at(8, new THREE.Vector3()).round() } }
+          : null;
   }
-  placeBlock() {
-    if (this.mode !== "play" || !this.buildMode) return;
-    if (this.blockStock <= 0) {
-      this.callbacks.tip?.("Solve a number puzzle to earn more blocks!");
-      return;
-    }
-    const target = this.blockTarget();
-    if (!target) {
-      this.callbacks.tip?.("Look down at the ground nearby to build.");
-      return;
-    }
+  placementPoint(target) {
+    if (!target) return null;
+    if (target.air) return target.air.point.clone();
     let p;
     if (target.placed) {
       p = target.placed.object.position.clone().add(target.placed.face.normal);
@@ -1021,6 +1135,24 @@ export class IslandWorld {
       p.x = Math.round(p.x);
       p.z = Math.round(p.z);
       p.y = this.heightAt(p.x, p.z) + 0.5;
+    }
+    return p;
+  }
+  placeBlock() {
+    if (this.mode !== "play" || !this.buildMode) return;
+    if (!this.isVillage && this.blockStock <= 0) {
+      this.callbacks.tip?.("Solve a number puzzle to earn more blocks!");
+      return;
+    }
+    const target = this.blockTarget();
+    if (!target) {
+      this.callbacks.tip?.("Look down at the ground nearby to build.");
+      return;
+    }
+    const p = this.placementPoint(target);
+    if (this.isVillage) {
+      this.builder.place({ x: p.x, y: p.y, z: p.z });
+      return;
     }
     const key = `${p.x},${p.y},${p.z}`;
     if (
@@ -1081,6 +1213,10 @@ export class IslandWorld {
       return;
     }
     const m = target.placed.object;
+    if (this.isVillage) {
+      this.builder.mine(m);
+      return;
+    }
     this.root.remove(m);
     this.blocks.delete(m.userData.blockKey);
     this.blockStock++;
@@ -1098,11 +1234,12 @@ export class IslandWorld {
       return false;
     for (const c of this.colliders)
       if (
+        !(this.isVillage && this.flying && this.player.y > 9) &&
         Math.abs(x - c.x) < c.w / 2 + 0.24 &&
         Math.abs(z - c.z) < c.d / 2 + 0.24
       )
         return false;
-    for (const m of this.blocks.values()) {
+    for (const m of this.voxels?.nearby(x, z) || this.blocks.values()) {
       if (
         Math.abs(x - m.position.x) < 0.75 &&
         Math.abs(z - m.position.z) < 0.75 &&
@@ -1154,7 +1291,8 @@ export class IslandWorld {
           forward /= length;
           side /= length;
         }
-        const speed = (this.keys.has("ShiftLeft") ? 7 : 4.7) * dt;
+        const speed =
+          (this.flying ? 9 : this.keys.has("ShiftLeft") ? 7 : 4.7) * dt;
         const dx =
           (-Math.sin(this.lookYaw) * forward + Math.cos(this.lookYaw) * side) *
           speed;
@@ -1165,14 +1303,38 @@ export class IslandWorld {
           this.player.x += dx;
         if (this.canMove(this.player.x, this.player.z + dz))
           this.player.z += dz;
-        this.velocityY -= 19 * dt;
-        this.player.y += this.velocityY * dt;
+        const previousFeet = this.player.y - 1.7;
+        if (this.flying) {
+          const vertical =
+            (this.keys.has("Space") ? 1 : 0) -
+            (this.keys.has("ShiftLeft") || this.keys.has("ShiftRight")
+              ? 1
+              : 0) +
+            (this.flyVertical || 0);
+          const proposed = this.player.y + vertical * 7 * dt;
+          const ceiling = [
+            ...(this.voxels?.nearby(this.player.x, this.player.z) || []),
+          ].some(
+            (m) =>
+              Math.abs(m.position.x - this.player.x) < 0.7 &&
+              Math.abs(m.position.z - this.player.z) < 0.7 &&
+              m.position.y - 0.5 >= this.player.y &&
+              m.position.y - 0.5 < proposed + 0.15,
+          );
+          if (!ceiling || vertical < 0)
+            this.player.y = Math.min(CREATIVE_HEIGHT + 4, proposed);
+          this.velocityY = 0;
+        } else {
+          this.velocityY -= 19 * dt;
+          this.player.y += this.velocityY * dt;
+        }
         let floor = this.heightAt(this.player.x, this.player.z) + 1.7;
-        for (const m of this.blocks.values())
+        for (const m of this.voxels?.nearby(this.player.x, this.player.z) ||
+          this.blocks.values())
           if (
             Math.abs(this.player.x - m.position.x) < 0.7 &&
             Math.abs(this.player.z - m.position.z) < 0.7 &&
-            this.player.y - 1.7 >= m.position.y + 0.3
+            previousFeet >= m.position.y + 0.45
           )
             floor = Math.max(floor, m.position.y + 0.5 + 1.7);
         if (this.player.y <= floor) {
@@ -1223,13 +1385,34 @@ export class IslandWorld {
       p.mesh.rotation.x += dt * 3;
       return true;
     });
+    this.builder?.update(this.mode === "play" ? dt : 0);
+    if (this.mode === "play" && this.heldBuild) {
+      this.buildRepeat = (this.buildRepeat || 0) + dt;
+      if (this.buildRepeat > 0.16) {
+        this.buildRepeat = 0;
+        this.heldBuild === "place" ? this.placeBlock() : this.mineBlock();
+      }
+    }
     this.targetOutline.visible = false;
+    this.builder?.preview(null);
     if (this.mode === "play" && this.buildMode) {
       const target = this.blockTarget();
+      this.builder?.preview(this.placementPoint(target));
       if (target?.placed) {
         this.targetOutline.position.copy(target.placed.object.position);
         this.targetOutline.visible = true;
+      } else if (this.isVillage && target?.terrain) {
+        const p = target.terrain.point;
+        this.targetOutline.position.set(
+          Math.round(p.x),
+          this.heightAt(p.x, p.z) + 0.5,
+          Math.round(p.z),
+        );
+        this.targetOutline.visible = true;
       }
+      if (this.isVillage && this.builder?.anchor)
+        this.targetOutline.material.color.set(0xffd571);
+      else this.targetOutline.material.color.set(0xffffff);
     }
     this.renderer.render(this.scene, this.camera);
   }

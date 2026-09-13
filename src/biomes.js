@@ -283,6 +283,20 @@ export class BiomeWorld {
         this.box("path", x, 1.56, z + side * 4, 8, 0.12, 0.12);
       }
     }
+    for (const [x, z, label] of [
+      [-22, -10, "Castle country"],
+      [22, -10, "Build to the sky"],
+      [-20, 17, "Rainbow workshop"],
+      [20, 17, "TNT testing ground"],
+      [0, -27, "Spaceport"],
+    ]) {
+      this.sign(label, x, 2.7, z - 7, 5);
+      for (const side of [-1, 1]) {
+        this.box("path", x + side * 7, 1.53, z, 0.12, 0.06, 14);
+        this.box("path", x, 1.53, z + side * 7, 14, 0.06, 0.12);
+        this.box("glow", x + side * 7, 1.8, z + 7, 0.35, 0.6, 0.35);
+      }
+    }
     for (const [x, z] of [
       [-17, -12],
       [15, -13],

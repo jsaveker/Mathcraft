@@ -31,6 +31,7 @@ import {
 } from "./profiles.js";
 import { avatarArt, escapeHtml } from "./explorer-art.js";
 import { LANDMARKS } from "./biomes.js";
+import { BLOCKS, BLUEPRINTS, CREATIVE_LIMIT } from "./blocks.js";
 
 const icons = {
   heart:
@@ -92,6 +93,28 @@ function sound(kind) {
   try {
     audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
     audioCtx.resume();
+    if (kind === "boom") {
+      const buffer = audioCtx.createBuffer(
+        1,
+        audioCtx.sampleRate * 0.65,
+        audioCtx.sampleRate,
+      );
+      const samples = buffer.getChannelData(0);
+      for (let i = 0; i < samples.length; i++)
+        samples[i] = (Math.random() * 2 - 1) * (1 - i / samples.length) ** 2;
+      const noise = audioCtx.createBufferSource(),
+        filter = audioCtx.createBiquadFilter(),
+        gain = audioCtx.createGain();
+      noise.buffer = buffer;
+      filter.type = "lowpass";
+      filter.frequency.value = 700;
+      gain.gain.value = 0.18;
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      noise.start();
+      return;
+    }
     const notes =
       kind === "success"
         ? [523.25, 659.25, 783.99, 1046.5]
@@ -161,13 +184,14 @@ document.querySelector("#app").innerHTML = `
  </main>
  <section id="game-hud" hidden aria-label="Game controls and progress">
    <div class="hud-top"><button id="pause" class="hud-brand" aria-label="Pause game">${icon("cube")} <b>mathcraft.</b><span>Ⅱ</span></button><div class="compass"><span>W</span><span>·</span><b id="heading">N</b><span>·</span><span>E</span></div><div class="hud-totals">${icon("diamond")} <b id="round-crystals">0 / 5</b><button id="sound-game" class="icon-button" aria-label="Mute sound">${icon("sound")}</button></div></div>
-   <div class="quest-panel"><div class="eyebrow">${icon("flag")} ISLAND HELPERS</div><h2 id="quest-title">Gather bridge planks</h2><p id="quest-description">The builders need a hand.</p><div id="quest-crystals" class="quest-crystals"></div><div id="quest-supplies" class="quest-supplies"></div><button id="guide">${icon("compass")} G · Take me to the next crystal ${icon("arrow")}</button></div>
+   <div class="quest-panel"><div class="eyebrow">${icon("flag")} <span id="quest-eyebrow">ISLAND HELPERS</span></div><h2 id="quest-title">Gather bridge planks</h2><p id="quest-description">The builders need a hand.</p><div id="quest-crystals" class="quest-crystals"></div><div id="quest-supplies" class="quest-supplies"></div><button id="guide">${icon("compass")} G · Take me to the next crystal ${icon("arrow")}</button></div>
    <div class="minimap" aria-label="Island map"><span class="map-label">MEADOW ISLES</span><div class="map-land"></div><span class="map-portal">▣</span>${SHRINES.map((p, i) => `<span class="map-crystal" data-map="${i}" style="left:${50 + p.x * 1.55}%;top:${50 + p.z * 1.55}%">${i + 1}</span>`).join("")}<span id="map-player">▲</span><span class="map-north">N</span></div>
    <div id="crosshair" aria-hidden="true">+</div>
    <button id="interaction" class="interact-prompt" hidden><kbd>E</kbd> <span>Solve the number crystal</span></button>
-   <div class="hotbar-wrap"><div class="build-label" id="build-label">YOUR EXPLORER'S KIT <span>Press B to build</span></div><div class="hotbar"><button class="tool-slot selected" data-slot="0" aria-label="Select grass block"><kbd>1</kbd><span class="block-icon grass-block"></span></button><button class="tool-slot" data-slot="1" aria-label="Select wood block"><kbd>2</kbd><span class="block-icon wood-block"></span></button><button class="tool-slot" data-slot="2" aria-label="Select crystal block"><kbd>3</kbd><span class="block-icon crystal-block"></span></button><span class="stock-label"><b id="block-stock">12</b> blocks</span><button class="build-button" id="build-toggle">${icon("cube")} Build</button></div></div>
+   <div class="hotbar-wrap"><div class="build-label" id="build-label">YOUR EXPLORER'S KIT <span>Press B to build</span></div><div class="hotbar"><div id="block-slots"></div><span class="stock-label"><b id="block-stock">12</b> blocks</span><button class="build-button" id="build-toggle">${icon("cube")} Build</button></div></div>
+   <div id="creative-toolbar" hidden aria-label="Creative building tools"><button id="open-palette">${icon("cube")} Blocks <kbd>E</kbd></button><button id="open-tools">${icon("settings")} Tools <kbd>T</kbd></button><button id="fly-toggle">Fly <kbd>F</kbd></button><button id="undo-build" title="Undo this visit’s last action">Undo <kbd>Z</kbd></button><button id="redo-build" title="Redo this visit’s last undone action">Redo <kbd>Y</kbd></button><button id="ignite-tnt">Light TNT <kbd>Q</kbd></button><button id="rotate-build" hidden>Rotate ↻ <kbd>R</kbd></button><span id="creative-status" role="status"></span></div>
    <div class="travel-tools"><button id="game-village">${icon("home")} Village <kbd>V</kbd></button><button id="landmark-guide">${icon("spark")} Discover <kbd>L</kbd></button><button id="game-profiles" aria-label="Switch explorer">${icon("settings")}</button></div><div class="controls-strip"><span><kbd>W A S D</kbd> Move</span><span><i class="mouse-icon"></i> Look</span><span><kbd>SPACE</kbd> Jump</span><span><kbd>E</kbd> Explore</span><span><kbd>ESC</kbd> Pause</span></div>
-   <div class="touch-controls"><div class="dpad"><button data-move="forward" aria-label="Move forward">▲</button><button data-move="left" aria-label="Move left">◀</button><button data-move="back" aria-label="Move backward">▼</button><button data-move="right" aria-label="Move right">▶</button></div><div class="touch-actions"><button id="touch-place">Place</button><button id="touch-mine">Mine</button><button id="touch-jump">Jump ↑</button></div></div>
+   <div class="touch-controls"><div class="dpad"><button data-move="forward" aria-label="Move forward">▲</button><button data-move="left" aria-label="Move left">◀</button><button data-move="back" aria-label="Move backward">▼</button><button data-move="right" aria-label="Move right">▶</button></div><div class="touch-actions"><button id="touch-place">Place</button><button id="touch-mine">Mine</button><button id="touch-jump">Jump ↑</button><button id="touch-down" hidden>Down ↓</button></div></div>
  </section>
  <section id="quest-reveal" hidden aria-label="Your maths changed the island"><div class="reveal-card"><div class="eyebrow">LOOK WHAT YOU MADE HAPPEN</div><h2 id="reveal-title"></h2><p id="reveal-description"></p><button class="primary-button" id="finish-reveal">Keep exploring ${icon("arrow")}</button></div></section>
  <div id="toast" role="status" aria-live="polite"></div>
@@ -181,7 +205,7 @@ function updateStats() {
   $("#explorers").innerHTML =
     `${avatarArt(profile.avatar)}<span>${escapeHtml(profile.name)}</span>`;
   $("#visit-village span").innerHTML =
-    `${escapeHtml(profile.name)}’s village<small>${(profile.builds.village || []).length} blocks built · ${profile.inventory} in your kit</small>`;
+    `${escapeHtml(profile.name)}’s village<small>${(profile.builds.village || []).length} blocks built · 36 block types · unlimited materials</small>`;
   $("#range-tag").textContent = `Up to ${save.range}`;
   $("#sound-home").innerHTML =
     `${icon(save.sound ? "sound" : "mute")} Sound ${save.sound ? "on" : "off"}`;
@@ -224,7 +248,8 @@ function toast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => $("#toast").classList.remove("visible"), 4200);
 }
-function showModal(html, mode = "pause") {
+function showModal(html, mode = "pause", creative = false) {
+  $("#modal").classList.toggle("creative-modal", creative);
   if (currentScreen === "play") world?.setMode(mode);
   $("#modal-content").innerHTML = html;
   if (!$("#modal").open) $("#modal").showModal();
@@ -242,7 +267,121 @@ function modalClose(label = "Close") {
 function bindClose(resume = true) {
   $("#modal-close")?.addEventListener("click", () => closeModal(resume));
 }
+function renderHotbar() {
+  const ids = villageMode ? world.hotbar : [0, 1, 2];
+  $("#block-slots").innerHTML = ids
+    .map(
+      (id, i) =>
+        `<button class="tool-slot ${world.selectedSlot === i ? "selected" : ""}" data-slot="${i}" aria-label="Select ${BLOCKS[id].name}" title="${i + 1} · ${BLOCKS[id].name}"><kbd>${i + 1}</kbd>${blockSwatch(BLOCKS[id])}</button>`,
+    )
+    .join("");
+  $$("[data-slot]").forEach(
+    (b) => (b.onclick = () => world.selectSlot(Number(b.dataset.slot))),
+  );
+}
+function blockSwatch(b) {
+  return `<span class="palette-cube pattern-${b.pattern || "solid"}" style="--block-color:${b.color}">${b.id === 35 ? "TNT" : ""}</span>`;
+}
+function updateCreativeUI() {
+  if (!world || !villageMode || !world.builder) return;
+  const builder = world.builder;
+  $("#rotate-build").hidden = !builder.mode.startsWith("stamp:");
+  $("#fly-toggle").classList.toggle("active", world.flying);
+  $("#fly-toggle").innerHTML = `${world.flying ? "Land" : "Fly"} <kbd>F</kbd>`;
+  $("#touch-jump").textContent = world.flying ? "Up ↑" : "Jump ↑";
+  $("#touch-down").hidden = !world.flying;
+  $("#undo-build").disabled = !builder.undoStack.length && !builder.fuses.size;
+  $("#redo-build").disabled = !builder.redoStack.length || !!builder.fuses.size;
+  const mode =
+    BLUEPRINTS.find((b) => `stamp:${b.id}` === builder.mode)?.name ||
+    { single: "Single block", line: "Line", floor: "Floor", wall: "Wall" }[
+      builder.mode
+    ];
+  $("#creative-status").textContent = builder.fuses.size
+    ? `TNT lit · ${builder.fuses.size} fuse${builder.fuses.size === 1 ? "" : "s"} · Z stops it`
+    : `${BLOCKS[world.selectedBlock].name} · ${mode}${builder.anchor ? " · Choose second corner" : ""}${world.flying ? " · Flying" : ""}`;
+}
+function showPalette() {
+  if (!villageMode) return;
+  showModal(
+    `${modalClose()}<div class="eyebrow">THE CREATIVE COLLECTION</div><h2 id="modal-title">What will you build?</h2><p class="modal-description">36 blocks. Unlimited imagination. Choose a block for hotbar slot <strong>${world.selectedSlot + 1}</strong>. Press 1–9 to change slots while playing.</p><div class="palette-filters" role="group" aria-label="Block categories">${["All", "Building", "Nature", "Colours", "Special"].map((c, i) => `<button data-category="${c}" aria-pressed="${i === 0}">${c}</button>`).join("")}</div><div class="block-library">${BLOCKS.map((b) => `<button data-block="${b.id}" data-kind="${b.category}" title="${b.name}" ${b.id === world.selectedBlock ? 'class="chosen"' : ""}>${blockSwatch(b)}<span>${b.name}</span></button>`).join("")}</div><p class="gentle-note">Glass and ice are see-through. Water cubes stay where you place them.<br>TNT: place it, aim at it, then press Q. Z stops the fuse or rebuilds the blast.</p>`,
+    "pause",
+    true,
+  );
+  bindClose();
+  $$("[data-category]").forEach(
+    (button) =>
+      (button.onclick = () => {
+        $$("[data-category]").forEach((b) =>
+          b.setAttribute("aria-pressed", String(b === button)),
+        );
+        $$("[data-block]").forEach(
+          (b) =>
+            (b.hidden =
+              button.dataset.category !== "All" &&
+              b.dataset.kind !== button.dataset.category),
+        );
+      }),
+  );
+  $$("[data-block]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const id = Number(b.dataset.block);
+        profile.hotbar[world.selectedSlot] = id;
+        world.hotbar = [...profile.hotbar];
+        world.selectSlot(world.selectedSlot);
+        saveNow();
+        renderHotbar();
+        closeModal();
+        toast(
+          `${BLOCKS[id].name} ready in slot ${world.selectedSlot + 1}. Right click or tap Place to build.`,
+        );
+      }),
+  );
+}
+function showBuildTools() {
+  if (!villageMode) return;
+  const brushes = [
+    [
+      "single",
+      "Single block",
+      "Place one cube at a time. Hold to keep building.",
+    ],
+    ["line", "Line", "Place two ends to connect them with blocks."],
+    ["floor", "Floor", "Place two opposite corners for a flat rectangle."],
+    ["wall", "Wall", "Place a bottom corner and an opposite top corner."],
+  ];
+  showModal(
+    `${modalClose()}<div class="eyebrow">THINK BIG. BUILD BIGGER.</div><h2 id="modal-title">Your building workshop</h2><p class="modal-description">Choose a tool, then aim and place. Fly with F to reach high corners or place blocks in midair. Every design has a preview before you place it.</p><div class="build-tools-grid">${brushes.map(([id, name, desc]) => `<button data-brush="${id}" class="${world.builder.mode === id ? "chosen" : ""}">${icon(id === "single" ? "cube" : id === "line" ? "arrow" : id === "wall" ? "home" : "flag")}<strong>${name}</strong><span>${desc}</span></button>`).join("")}</div><h3 class="blueprints-title">Ready-made wonders</h3><div class="build-tools-grid blueprints">${BLUEPRINTS.map((b) => `<button data-brush="stamp:${b.id}" class="${world.builder.mode === `stamp:${b.id}` ? "chosen" : ""}">${icon(b.id === "rocket" ? "spark" : b.id === "castle" ? "flag" : "home")}<strong>${b.name}</strong><span>${b.description}</span></button>`).join("")}</div><p class="gentle-note">R rotates a blueprint. Lines, walls and floors can span up to 24 blocks.<br>Z undoes a whole design or blast. Y redoes it. Undo remembers your last 24 actions during this visit.</p>`,
+    "pause",
+    true,
+  );
+  bindClose();
+  $$("[data-brush]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        world.builder.choose(b.dataset.brush);
+        setBuild(true);
+        closeModal();
+        toast(
+          b.dataset.brush.startsWith("stamp:")
+            ? "Aim at an open plot. R rotates the preview. Place builds the whole design."
+            : b.dataset.brush === "single"
+              ? "Single blocks ready. Hold right click to keep building."
+              : "Place the first corner, then aim and place the second. Open Tools to cancel.",
+        );
+      }),
+  );
+}
 function updateHud() {
+  $("#game-hud").classList.toggle("creative-mode", villageMode);
+  $("#creative-toolbar").hidden = !villageMode;
+  $("#quest-eyebrow").textContent = villageMode
+    ? "CREATIVE VILLAGE"
+    : "ISLAND HELPERS";
+  $("#touch-down").hidden = !villageMode || !world.flying;
+  $("#touch-jump").textContent =
+    villageMode && world.flying ? "Up ↑" : "Jump ↑";
   $("#landmark-guide").hidden = villageMode || !LANDMARKS[WORLDS[selected].id];
   $(".minimap").classList.toggle("village-map", villageMode);
   $("#game-village").innerHTML =
@@ -251,13 +390,14 @@ function updateHud() {
     $("#round-crystals").textContent = save.totalCrystals;
     $("#quest-title").textContent = `${profile.name}’s village`;
     $("#quest-description").textContent =
-      "Your creations stay here. Build on an open plot, then explore the islands to earn more materials.";
+      "Unlimited blocks, big open plots and room to fly. Open Blocks or Tools to create something amazing.";
     $("#quest-crystals").innerHTML = avatarArt(profile.avatar);
     $("#quest-supplies").innerHTML =
-      `${icon("check")} <span>${world.blocks.size} / 600 blocks built · autosaved</span>`;
+      `${icon("check")} <span>${world.blocks.size.toLocaleString()} / ${CREATIVE_LIMIT.toLocaleString()} blocks built · autosaved</span>`;
     $("#guide").innerHTML =
       `${icon("compass")} G · Take me to the building plots`;
-    $("#block-stock").textContent = world.blockStock;
+    $("#block-stock").textContent = "∞";
+    updateCreativeUI();
     $(".map-label").textContent = "HOME VILLAGE";
     return;
   }
@@ -301,6 +441,7 @@ function startGame() {
   $("#game-hud").hidden = false;
   currentScreen = "play";
   world.start(WORLDS[selected].id, round, buildingFor(WORLDS[selected].id));
+  renderHotbar();
   updateHud();
   setBuild(false);
   if (firstSession || !round.gathered.some(Boolean)) {
@@ -477,6 +618,10 @@ function goHome() {
   updateStats();
 }
 function showHelp() {
+  if (villageMode) {
+    showBuildTools();
+    return;
+  }
   showModal(
     `${modalClose()}<div class="modal-emblem mint">${icon("book")}</div><h2 id="modal-title">Adventure starts here.</h2><p class="modal-description">Follow the five island jobs in order. Press E to gather or inspect supplies, then E again to work out what the island needs. Each world has different projects: rescue a balloon, uncover a fossil, send a minecart, or launch a rocket. Each job also earns 3 building blocks!</p><div class="help-grid"><div><kbd>W A S D</kbd><span>Walk around the island</span></div><div><kbd>MOUSE</kbd><span>Look around (or drag)</span></div><div><kbd>SPACE</kbd><span>Jump over blocks</span></div><div><kbd>E</kbd><span>Gather supplies or solve the current job</span></div><div><kbd>G</kbd><span>Go straight to the current island job</span></div><div><kbd>B</kbd><span>Switch building on or off</span></div><div><kbd>1 · 2 · 3</kbd><span>Choose your building block</span></div><div><kbd>RIGHT CLICK</kbd><span>Place a block nearby</span></div><div><kbd>LEFT CLICK</kbd><span>Mine a block you placed</span></div><div><kbd>ESC</kbd><span>Pause and release the mouse</span></div></div><p class="gentle-note">Arrow keys work too. On a touchscreen, use the arrow pad and drag to look. Stuck? the guide button will help.</p><button class="primary-button wide" id="help-done">Got it ${icon("check")}</button>`,
   );
@@ -546,9 +691,11 @@ function setBuild(enabled) {
   $("#build-toggle").classList.toggle("active", enabled);
   $("#build-toggle").innerHTML =
     `${icon(enabled ? "check" : "cube")} ${enabled ? "Building" : "Build"}`;
-  $("#build-label").innerHTML = enabled
-    ? "MAKE A LITTLE SOMETHING <span>Right click: place · Left click: mine</span>"
-    : "YOUR EXPLORER’S KIT <span>Press B to build</span>";
+  $("#build-label").innerHTML = villageMode
+    ? "YOUR CREATIVE KIT <span>1–9: select · E: all blocks · Hold right click: build</span>"
+    : enabled
+      ? "MAKE A LITTLE SOMETHING <span>Right click: place · Left click: mine</span>"
+      : "YOUR EXPLORER’S KIT <span>Press B to build</span>";
 }
 function updatePosition({ x, z, yaw, nearby, portal, landmark }) {
   const player = $("#map-player");
@@ -591,6 +738,7 @@ function buildingFor(id) {
   return {
     blocks: profile.builds[id] || [],
     inventory: profile.inventory,
+    hotbar: profile.hotbar,
     discovered: profile.discoveries.includes(id),
   };
 }
@@ -613,11 +761,12 @@ function startVillage() {
   $("#home-screen").hidden = true;
   $("#game-hud").hidden = false;
   world.startVillage(buildingFor("village"));
+  renderHotbar();
   setBuild(true);
   updateHud();
   if (!matchMedia("(pointer: coarse)").matches) world.lock();
   toast(
-    "Welcome home! Build on any open plot. Every block and every material is saved.",
+    "Welcome to your creative village! E: 36 blocks · T: big building tools · F: fly · Q: light TNT.",
   );
 }
 function showProfiles() {
@@ -682,7 +831,7 @@ function showLandmark() {
     site = LANDMARKS[id];
   const known = profile.discoveries.includes(id);
   showModal(
-    `${modalClose("Keep exploring")}<div class="eyebrow centered">${known ? "YOUR DISCOVERIES" : "A LITTLE OFF THE BEATEN PATH"}</div><h2 id="modal-title">${site.title}</h2><p class="modal-description">${site.description}</p><div id="landmark-activity"></div><p class="gentle-note">${known ? "Already discovered! You can enjoy it again whenever you like." : "Discover this place to earn 12 building blocks for your village."}</p>`,
+    `${modalClose("Keep exploring")}<div class="eyebrow centered">${known ? "YOUR DISCOVERIES" : "A LITTLE OFF THE BEATEN PATH"}</div><h2 id="modal-title">${site.title}</h2><p class="modal-description">${site.description}</p><div id="landmark-activity"></div><p class="gentle-note">${known ? "Already discovered! You can enjoy it again whenever you like." : "Discover this place to earn 12 building blocks for your adventures."}</p>`,
     "challenge",
   );
   bindClose();
@@ -794,13 +943,16 @@ $("#pause").onclick = pause;
 $("#guide").onclick = () => world.guide();
 $("#interaction").onclick = () => world.interact();
 $("#build-toggle").onclick = () => setBuild(!world.buildMode);
-$$("[data-slot]").forEach(
-  (b) =>
-    (b.onclick = () => {
-      world.selectedBlock = Number(b.dataset.slot);
-      $$("[data-slot]").forEach((s) => s.classList.toggle("selected", s === b));
-    }),
-);
+$("#open-palette").onclick = showPalette;
+$("#open-tools").onclick = showBuildTools;
+$("#fly-toggle").onclick = () => world.toggleFlight();
+$("#undo-build").onclick = () => world.builder?.undo();
+$("#redo-build").onclick = () => world.builder?.redo();
+$("#ignite-tnt").onclick = () => world.igniteTNT();
+$("#rotate-build").onclick = () => {
+  world.builder.rotation = (world.builder.rotation + 1) % 4;
+  updateCreativeUI();
+};
 for (const id of ["#sound-home", "#sound-game"])
   $(id).onclick = () => {
     save.sound = !save.sound;
@@ -813,7 +965,19 @@ $("#modal").addEventListener("cancel", (e) => {
     goHome();
   } else closeModal(currentScreen === "play");
 });
-$("#touch-jump").onclick = () => world.jump();
+for (const [id, direction] of [
+  ["#touch-jump", 1],
+  ["#touch-down", -1],
+]) {
+  const button = $(id);
+  button.onpointerdown = (e) => {
+    e.preventDefault();
+    button.setPointerCapture(e.pointerId);
+    if (world.flying) world.flyVertical = direction;
+    else if (direction === 1) world.jump();
+  };
+  button.onpointerup = button.onpointercancel = () => (world.flyVertical = 0);
+}
 $("#touch-place").onclick = () => world.placeBlock();
 $("#touch-mine").onclick = () => world.mineBlock();
 $$("[data-move]").forEach((b) => {
@@ -834,10 +998,10 @@ try {
   world = new IslandWorld($("#world"), {
     challenge: interactQuest,
     village: () => (villageMode ? goHome() : startVillage()),
-    villageHelp: () =>
-      toast(
-        "Press B to build. Right click places a block; left click mines your blocks. Every change is saved.",
-      ),
+    palette: showPalette,
+    tools: showBuildTools,
+    creative: updateCreativeUI,
+    explosion: () => sound("boom"),
     landmark: showLandmark,
     building: (id, state) => {
       recordBuilding(profile, id, state.blocks, state.inventory);
@@ -848,7 +1012,7 @@ try {
     pause,
     tip: toast,
     position: updatePosition,
-    stock: (n) => ($("#block-stock").textContent = n),
+    stock: (n) => ($("#block-stock").textContent = villageMode ? "∞" : n),
     buildChange: setBuild,
     blockSelect: (n) =>
       $$("[data-slot]").forEach((s, i) =>

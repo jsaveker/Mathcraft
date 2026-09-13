@@ -1,3 +1,9 @@
+import {
+  BLOCKS,
+  CREATIVE_LIMIT,
+  CREATIVE_HEIGHT,
+  cleanHotbar,
+} from "./blocks.js";
 import { DEFAULT_SAVE, readSave, WORLDS } from "./maths.js";
 
 export const FAMILY_KEY = "mathcraft-family-v2";
@@ -11,7 +17,8 @@ export const profileName = (name) =>
     .trim()
     .slice(0, 20) || "Explorer";
 
-export function validateBlocks(blocks) {
+export function validateBlocks(blocks, worldId = "meadow") {
+  const creative = worldId === "village";
   const seen = new Set();
   return (Array.isArray(blocks) ? blocks : [])
     .filter((b) => {
@@ -23,8 +30,10 @@ export function validateBlocks(blocks) {
         Math.abs(b.z) > 45 ||
         !Number.isFinite(b.y) ||
         b.y < -2 ||
-        b.y > 30 ||
-        ![0, 1, 2].includes(b.type)
+        b.y > (creative ? CREATIVE_HEIGHT : 30) ||
+        !(creative
+          ? Number.isInteger(b.type) && BLOCKS[b.type]
+          : [0, 1, 2].includes(b.type))
       )
         return false;
       const key = `${b.x},${b.y},${b.z}`;
@@ -32,7 +41,7 @@ export function validateBlocks(blocks) {
       seen.add(key);
       return true;
     })
-    .slice(0, MAX_BLOCKS)
+    .slice(0, creative ? CREATIVE_LIMIT : MAX_BLOCKS)
     .map(({ x, y, z, type }) => ({ x, y, z, type }));
 }
 export function newProfile(
@@ -46,6 +55,7 @@ export function newProfile(
     avatar: AVATARS.includes(avatar) ? avatar : "fox",
     progress: structuredClone(DEFAULT_SAVE),
     inventory: 36,
+    hotbar: cleanHotbar(),
     builds: {},
     discoveries: [],
   };
@@ -54,8 +64,9 @@ function validateProfile(p) {
   const clean = newProfile(p.name, p.avatar, p.id);
   clean.progress = readSave({ getItem: () => JSON.stringify(p.progress) });
   clean.inventory = integer(p.inventory, 36);
+  clean.hotbar = cleanHotbar(p.hotbar);
   clean.builds = Object.fromEntries(
-    BUILD_WORLDS.map((id) => [id, validateBlocks(p.builds?.[id])]),
+    BUILD_WORLDS.map((id) => [id, validateBlocks(p.builds?.[id], id)]),
   );
   clean.discoveries = [
     ...new Set(
@@ -126,7 +137,7 @@ export function addProfile(family, name, avatar) {
 }
 export function recordBuilding(profile, worldId, blocks, inventory) {
   if (!BUILD_WORLDS.includes(worldId)) return;
-  profile.builds[worldId] = validateBlocks(blocks);
+  profile.builds[worldId] = validateBlocks(blocks, worldId);
   profile.inventory = integer(inventory, profile.inventory);
 }
 
