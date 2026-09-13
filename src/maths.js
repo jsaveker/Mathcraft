@@ -6,8 +6,9 @@ export const WORLDS = [
     biome: "THE GRASSLANDS",
     color: "#68a84f",
     crystals: "#67efd5",
-    title: "Wake the ancient portal",
-    description: "Find five number crystals to bring the portal back to life.",
+    title: "A little help. A brighter island.",
+    description:
+      "Build a bridge, feed the sheep, and bring the island to life.",
     operation: "mixed",
   },
   {
@@ -134,14 +135,39 @@ export function createRound(save, worldId, random = Math.random) {
     prior.collected.length === 5 &&
     prior.collected.every((x) => typeof x === "boolean") &&
     prior.finished !== true
-  )
+  ) {
+    // Existing crystals become completed island jobs; never erase earned progress.
+    prior.gathered = prior.collected.map(
+      (done, i) => done || prior.gathered?.[i] === true,
+    );
     return prior;
+  }
+  const questions = Array.from({ length: 5 }, (_, i) => {
+    const q = makeQuestion(
+      i === 0 ? save.range - 1 : save.range,
+      save.operation,
+      random,
+      i,
+    );
+    // Physical supplies stay positive; the portal can still teach a zero result.
+    if (i < 4 && q.answer === 0) {
+      q.b -= 1;
+      q.answer = 1;
+    }
+    return q;
+  });
+  // The timber counted in job 1 is exactly what is already laid in job 2.
+  const stock = questions[0].answer;
+  const extra = 1 + Math.floor(random() * (save.range - stock));
+  questions[1] =
+    questions[1].operator === "+"
+      ? { a: stock, b: extra, operator: "+", answer: stock + extra }
+      : { a: stock + extra, b: stock, operator: "−", answer: extra };
   const round = {
     range: save.range,
     operation: save.operation,
-    questions: Array.from({ length: 5 }, (_, i) =>
-      makeQuestion(save.range, save.operation, random, i),
-    ),
+    questions,
+    gathered: Array(5).fill(false),
     collected: Array(5).fill(false),
     finished: false,
   };

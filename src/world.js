@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { QUESTS } from "./quests.js";
+import { QuestWorld } from "./quest-world.js";
 
 const THEMES = {
   meadow: {
@@ -36,13 +38,7 @@ const hash = (x, z) => {
   const n = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
   return n - Math.floor(n);
 };
-export const SHRINES = [
-  { x: 2, z: 10 },
-  { x: -10, z: 5 },
-  { x: 10, z: 0 },
-  { x: -8, z: -9 },
-  { x: 9, z: -10 },
-];
+export const SHRINES = QUESTS.map(({ x, z }) => ({ x, z }));
 export const PORTAL = { x: 0, z: -9 };
 
 export class IslandWorld {
@@ -173,6 +169,8 @@ export class IslandWorld {
         m.dispose();
       });
     }
+    this.questWorld = null;
+    this.sheep = [];
     this.themeId = id;
     this.theme = THEMES[id];
     this.scene.background = new THREE.Color(this.theme.sky);
@@ -211,6 +209,10 @@ export class IslandWorld {
       }),
       white: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
       flower: new THREE.MeshStandardMaterial({ color: 0xffcc72 }),
+      apple: new THREE.MeshStandardMaterial({
+        color: 0xd56848,
+        roughness: 0.8,
+      }),
       coral: new THREE.MeshStandardMaterial({ color: 0xf09887 }),
       dark: new THREE.MeshStandardMaterial({ color: 0x293f40 }),
       glow: new THREE.MeshStandardMaterial({
@@ -314,23 +316,11 @@ export class IslandWorld {
     this.addBatch("dark", -6, 2.7, -0.51, 1.3, 1.5, 0.05);
     this.addBatch("glow", -7.45, 3.2, -0.56, 0.3, 0.35, 0.1);
     this.colliders.push({ x: -6, z: 1.5, w: 5, d: 4 });
-    // A small arched boardwalk across the water.
-    for (let x = 11; x <= 17; x++) {
-      this.addBatch("plank", x, 2.02, 7, 1, 0.2, 2.4);
-      if (x % 2 === 1) {
-        for (const z of [5.7, 8.3]) {
-          this.addBatch("wood", x, 2.6, z, 0.16, 1.3, 0.16);
-          this.addBatch("gold", x, 3.3, z, 0.25, 0.12, 0.25);
-        }
-      }
-      for (const z of [5.7, 8.3])
-        this.addBatch("plank", x, 3.02, z, 1, 0.13, 0.13);
-    }
     this.makePortal();
     SHRINES.forEach((p, i) => this.makeShrine(p, i));
-    this.makeSheep(-1, 7, 0.3);
-    this.makeSheep(7, 4, -0.8);
-    this.makeSheep(-11, 9, 1.5);
+    this.makeSheep(5, 0, -1.2);
+    this.makeSheep(7, -0.2, -1.4);
+    this.makeSheep(9, 0.5, -1.7);
     // Stepped, distant islands create a miniature world all the way to the horizon.
     [
       [-40, -12, 3, 7],
@@ -382,6 +372,7 @@ export class IslandWorld {
     this.flushBatches();
     this.makeClouds();
     this.makeFireflies();
+    this.questWorld = new QuestWorld(this);
     this.updateCollected(this.collected);
     this.renderer.shadowMap.needsUpdate = true;
   }
@@ -500,11 +491,11 @@ export class IslandWorld {
     this.mesh("rock", x, ground + 0.18, z, 1.5, 0.36, 1.5);
     this.mesh("gold", x, ground + 0.4, z, 1.1, 0.12, 1.1);
     const crystal = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.55, 0),
+      new THREE.OctahedronGeometry(0.28, 0),
       this.mats.glow,
     );
     crystal.scale.y = 1.5;
-    crystal.position.set(x, ground + 1.55, z);
+    crystal.position.set(x, ground + 1.95, z);
     crystal.castShadow = true;
     this.root.add(crystal);
     const ring = new THREE.Mesh(
@@ -515,32 +506,34 @@ export class IslandWorld {
     ring.position.set(x, ground + 0.6, z);
     this.root.add(ring);
     const c = document.createElement("canvas");
-    c.width = 128;
-    c.height = 128;
+    c.width = 512;
+    c.height = 112;
     const ctx = c.getContext("2d");
     ctx.fillStyle = "#fffdf0";
     ctx.beginPath();
-    ctx.roundRect(12, 12, 104, 104, 24);
+    ctx.roundRect(4, 4, 504, 104, 20);
     ctx.fill();
     ctx.fillStyle = "#2e5b51";
-    ctx.font = "bold 70px Trebuchet MS";
+    ctx.font = "bold 30px Trebuchet MS";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(index + 1, 64, 68);
+    ctx.fillText(`${index + 1} · ${QUESTS[index].location}`, 256, 58, 478);
     const map = new THREE.CanvasTexture(c);
     map.colorSpace = THREE.SRGBColorSpace;
     const label = new THREE.Sprite(
       new THREE.SpriteMaterial({ map, depthTest: true, transparent: true }),
     );
-    label.position.set(x, ground + 3, z);
-    label.scale.set(0.8, 0.8, 1);
+    label.position.set(x, ground + 2.6, z);
+    label.scale.set(2.5, 0.55, 1);
     this.root.add(label);
-    this.shrines.push({ crystal, ring, label, x, z, base: ground + 1.55 });
+    this.shrines.push({ crystal, ring, label, x, z, base: ground + 1.95 });
   }
   makeSheep(x, z, rotation) {
     const g = new THREE.Group();
     g.position.set(x, this.heightAt(x, z), z);
     g.rotation.y = rotation;
+    g.userData.ground = g.position.y;
+    this.sheep.push(g);
     this.root.add(g);
     this.mesh("white", 0, 0.8, 0, 1.25, 0.85, 0.8, g);
     this.mesh("white", 0.62, 0.96, 0, 0.6, 0.6, 0.64, g);
@@ -602,7 +595,10 @@ export class IslandWorld {
     this.root.add(this.motes);
   }
   heightAt(x, z) {
-    return this.terrain.get(`${Math.round(x)},${Math.round(z)}`) ?? -100;
+    return Math.max(
+      this.terrain.get(`${Math.round(x)},${Math.round(z)}`) ?? -100,
+      this.questWorld?.bridgeHeight(x, z) ?? -100,
+    );
   }
   resize() {
     const w = innerWidth,
@@ -735,10 +731,12 @@ export class IslandWorld {
     else this.camera.fov = 46;
     this.camera.updateProjectionMatrix();
   }
-  start(id, collected) {
+  start(id, round) {
+    this.questRound = round;
     if (id !== this.themeId) this.loadTheme(id);
-    this.collected = [...collected];
-    this.updateCollected(collected);
+    else this.questWorld.configure(round);
+    this.collected = [...round.collected];
+    this.updateCollected(round.collected);
     this.player.set(1, this.heightAt(1, 16) + 1.7, 16);
     this.lookYaw = 0;
     this.lookPitch = -0.1;
@@ -775,19 +773,22 @@ export class IslandWorld {
       Math.hypot(this.player.x - PORTAL.x, this.player.z - PORTAL.z) < 4
     )
       this.callbacks.complete?.();
-    else this.callbacks.tip?.("Follow the floating numbers to find a crystal.");
+    else
+      this.callbacks.tip?.(
+        "Follow the signposts to help the island. Press G for a guide.",
+      );
   }
   guide() {
     const index = this.collected.findIndex((x) => !x);
     const p = index < 0 ? PORTAL : SHRINES[index];
-    this.player.set(p.x, this.heightAt(p.x, p.z + 2.5) + 1.7, p.z + 2.5);
+    this.player.set(p.x, this.heightAt(p.x, p.z + 3) + 1.7, p.z + 3);
     this.lookYaw = 0;
     this.lookPitch = -0.1;
     this.velocityY = 0;
     this.callbacks.tip?.(
       index < 0
         ? "The portal is ready. Press E to step through!"
-        : "You found a crystal! Press E to try its number puzzle.",
+        : `You found the ${QUESTS[index].location.toLowerCase()}. Press E to help!`,
     );
   }
   updateCollected(collected) {
@@ -797,12 +798,21 @@ export class IslandWorld {
       s.label.visible = !collected[i];
       s.ring.material = collected[i] ? this.mats.glow : this.mats.gold;
     });
+    this.questWorld?.apply();
     if (this.portalSurface)
       this.portalSurface.material.uniforms.portalPower.value = collected.every(
         Boolean,
       )
         ? 1
         : 0;
+  }
+  gather(index) {
+    this.questWorld.gather(index);
+  }
+  showReward(index) {
+    this.setMode("reward");
+    this.rewardView = this.questWorld.revealCamera(index);
+    this.questWorld.animate(index);
   }
   collect(index) {
     this.collected[index] = true;
@@ -882,10 +892,13 @@ export class IslandWorld {
     )
       return;
     if (
-      SHRINES.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < 1.6) ||
+      this.questWorld?.isProtected(p.x, p.z) ||
+      SHRINES.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < 2.2) ||
       Math.hypot(p.x - PORTAL.x, p.z - PORTAL.z) < 3.5
     ) {
-      this.callbacks.tip?.("Give the crystals and portal a little space.");
+      this.callbacks.tip?.(
+        "Give the island jobs, bridge, and portal a little space.",
+      );
       return;
     }
     if (this.blocks.size >= 150) {
@@ -920,7 +933,8 @@ export class IslandWorld {
     this.callbacks.stock?.(this.blockStock);
   }
   canMove(x, z) {
-    if (this.heightAt(x, z) < -5) return false;
+    if (this.heightAt(x, z) < -5 || this.questWorld?.blocksMovement(x, z))
+      return false;
     for (const c of this.colliders)
       if (
         Math.abs(x - c.x) < c.w / 2 + 0.24 &&
@@ -944,7 +958,16 @@ export class IslandWorld {
     this.lastFrame = now;
     this.elapsed += dt;
     const t = this.elapsed;
-    if (this.mode === "home") {
+    if (this.mode === "reward" && this.rewardView) {
+      const distance = Math.max(1, 0.8 / this.camera.aspect);
+      const { position, target } = this.rewardView;
+      this.camera.position.set(
+        ...position.map(
+          (value, i) => target[i] + (value - target[i]) * distance,
+        ),
+      );
+      this.camera.lookAt(...this.rewardView.target);
+    } else if (this.mode === "home") {
       const narrow = innerWidth < 760;
       const angle = Math.sin(t * 0.045) * 0.045;
       this.camera.position.set(
@@ -1010,6 +1033,10 @@ export class IslandWorld {
       this.camera.rotation.order = "YXZ";
       this.camera.rotation.set(this.lookPitch, this.lookYaw, 0);
     }
+    this.questWorld?.update(
+      this.mode === "pause" || this.mode === "challenge" ? 0 : dt,
+      t,
+    );
     this.shrines.forEach((s, i) => {
       s.crystal.position.y = s.base + Math.sin(t * 1.8 + i) * 0.16;
       s.crystal.rotation.y = t * 0.6 + i;

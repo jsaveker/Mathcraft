@@ -3,6 +3,14 @@ import "@fontsource-variable/dm-sans/wght.css";
 import "./style.css";
 import { IslandWorld, SHRINES, PORTAL } from "./world.js";
 import {
+  QUESTS,
+  activeQuest,
+  questPhase,
+  gatherQuest,
+  finishQuest,
+  describeQuest,
+} from "./quests.js";
+import {
   WORLDS,
   readSave,
   persistSave,
@@ -11,6 +19,8 @@ import {
 } from "./maths.js";
 
 const icons = {
+  heart:
+    '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',
   cube: '<path d="m12 2 9 5v10l-9 5-9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10M7.5 4.5l9 5"/>',
   diamond: '<path d="m12 2 7 10-7 10-7-10zM5 12h14M12 2v20"/>',
   arrow: '<path d="M4 12h16m-6-6 6 6-6 6"/>',
@@ -99,7 +109,7 @@ document.querySelector("#app").innerHTML = `
    <section class="hero" aria-labelledby="hero-title">
      <div class="eyebrow"><span class="live-dot"></span> AN ADVENTURE THAT ADDS UP</div>
      <h1 id="hero-title">Big adventures.<br>Little <span>numbers.</span></h1>
-     <p class="hero-description">A world of blocks. A little bit of magic.<br>Build your confidence, one adventure at a time.</p>
+     <p class="hero-description">Build a bridge. Feed a friend. Make an island bloom.<br>A little maths can make a big difference.</p>
      <button class="primary-button hero-play" id="start-adventure">Let's play ${icon("arrow")}</button>
      <div class="play-note"><span class="tiny-cube">${icon("cube")}</span> Explore. Solve. Build. Repeat.</div>
      <div class="learning-tags"><span><b>+</b> Addition</span><span><b>−</b> Subtraction</span><span id="range-tag">Up to 100</span></div>
@@ -111,7 +121,7 @@ document.querySelector("#app").innerHTML = `
  </main>
  <section id="game-hud" hidden aria-label="Game controls and progress">
    <div class="hud-top"><button id="pause" class="hud-brand" aria-label="Pause game">${icon("cube")} <b>mathcraft.</b><span>Ⅱ</span></button><div class="compass"><span>W</span><span>·</span><b id="heading">N</b><span>·</span><span>E</span></div><div class="hud-totals">${icon("diamond")} <b id="round-crystals">0 / 5</b><button id="sound-game" class="icon-button" aria-label="Mute sound">${icon("sound")}</button></div></div>
-   <div class="quest-panel"><div class="eyebrow">${icon("flag")} YOUR ADVENTURE</div><h2 id="quest-title">Wake the ancient portal</h2><p id="quest-description">Find five number crystals to bring the portal back to life.</p><div id="quest-crystals" class="quest-crystals"></div><button id="guide">${icon("compass")} G · Take me to the next crystal ${icon("arrow")}</button></div>
+   <div class="quest-panel"><div class="eyebrow">${icon("flag")} ISLAND HELPERS</div><h2 id="quest-title">Gather bridge planks</h2><p id="quest-description">The builders need a hand.</p><div id="quest-crystals" class="quest-crystals"></div><div id="quest-supplies" class="quest-supplies"></div><button id="guide">${icon("compass")} G · Take me to the next crystal ${icon("arrow")}</button></div>
    <div class="minimap" aria-label="Island map"><span class="map-label">MEADOW ISLES</span><div class="map-land"></div><span class="map-portal">▣</span>${SHRINES.map((p, i) => `<span class="map-crystal" data-map="${i}" style="left:${50 + p.x * 1.55}%;top:${50 + p.z * 1.55}%">${i + 1}</span>`).join("")}<span id="map-player">▲</span><span class="map-north">N</span></div>
    <div id="crosshair" aria-hidden="true">+</div>
    <button id="interaction" class="interact-prompt" hidden><kbd>E</kbd> <span>Solve the number crystal</span></button>
@@ -119,6 +129,7 @@ document.querySelector("#app").innerHTML = `
    <div class="controls-strip"><span><kbd>W A S D</kbd> Move</span><span><i class="mouse-icon"></i> Look</span><span><kbd>SPACE</kbd> Jump</span><span><kbd>E</kbd> Explore</span><span><kbd>ESC</kbd> Pause</span></div>
    <div class="touch-controls"><div class="dpad"><button data-move="forward" aria-label="Move forward">▲</button><button data-move="left" aria-label="Move left">◀</button><button data-move="back" aria-label="Move backward">▼</button><button data-move="right" aria-label="Move right">▶</button></div><div class="touch-actions"><button id="touch-place">Place</button><button id="touch-mine">Mine</button><button id="touch-jump">Jump ↑</button></div></div>
  </section>
+ <section id="quest-reveal" hidden aria-label="Your maths changed the island"><div class="reveal-card"><div class="eyebrow">LOOK WHAT YOU MADE HAPPEN</div><h2 id="reveal-title"></h2><p id="reveal-description"></p><button class="primary-button" id="finish-reveal">Keep exploring ${icon("arrow")}</button></div></section>
  <div id="toast" role="status" aria-live="polite"></div>
  <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>
  <div id="loading"><span class="brand-cube">${icon("cube")}</span><strong>Growing your island…</strong><span>Planting a little possibility.</span></div>`;
@@ -189,24 +200,30 @@ function bindClose(resume = true) {
 }
 function updateHud() {
   const count = round.collected.filter(Boolean).length;
+  const next = activeQuest(round.collected);
+  const quest = QUESTS[next];
   $("#round-crystals").textContent = `${count} / 5`;
   $("#quest-crystals").innerHTML = round.collected
     .map(
       (done, i) =>
-        `<span class="${done ? "collected" : ""}" aria-label="Crystal ${i + 1}${done ? " collected" : ""}">${icon("diamond")}</span>`,
+        `<span class="quest-step ${done ? "collected" : next === i ? "current" : ""}" title="${QUESTS[i].title}" aria-label="${QUESTS[i].title}${done ? ": done" : next === i ? ": current job" : ""}">${icon(done ? "check" : QUESTS[i].icon)}</span>`,
     )
     .join("");
-  $("#quest-title").textContent =
-    count === 5 ? "Your portal is ready!" : WORLDS[selected].title;
-  $("#quest-description").textContent =
-    count === 5
-      ? "Step into the glowing portal to finish your adventure."
-      : WORLDS[selected].description;
+  $("#quest-title").textContent = quest ? quest.title : "Your portal is ready!";
+  $("#quest-description").textContent = quest
+    ? quest.goal
+    : "The bridge is repaired, the sheep are fed, and the garden is blooming. Step through your portal!";
+  $("#quest-supplies").innerHTML = quest
+    ? `${icon(round.gathered[next] ? "check" : "cube")} <span>${round.gathered[next] ? `Supplies ready · ${quest.action.toLowerCase()}` : `First: ${quest.gather.toLowerCase()}`}</span>`
+    : `${icon("spark")} Five good deeds. One brighter island.`;
   $("#guide").innerHTML =
-    `${icon("compass")} G · ${count === 5 ? "Take me to the portal" : "Take me to the next crystal"} ${icon("arrow")}`;
-  $$("[data-map]").forEach((el) =>
-    el.classList.toggle("done", round.collected[Number(el.dataset.map)]),
-  );
+    `${icon("compass")} G · ${quest ? `Take me to the ${quest.location.toLowerCase()}` : "Take me to the portal"} ${icon("arrow")}`;
+  $$("[data-map]").forEach((el) => {
+    const i = Number(el.dataset.map);
+    el.classList.toggle("done", round.collected[i]);
+    el.classList.toggle("current", next === i);
+    el.title = QUESTS[i].location;
+  });
   $("#block-stock").textContent = world.blockStock;
   $(".map-label").textContent = WORLDS[selected].name.toUpperCase();
 }
@@ -217,7 +234,7 @@ function startGame() {
   $("#home-screen").hidden = true;
   $("#game-hud").hidden = false;
   currentScreen = "play";
-  world.start(WORLDS[selected].id, round.collected);
+  world.start(WORLDS[selected].id, round);
   updateHud();
   setBuild(false);
   if (firstSession) {
@@ -230,20 +247,43 @@ function startGame() {
 }
 function showIntro() {
   showModal(
-    `<div class="modal-emblem mint">${icon("compass")}</div><div class="eyebrow centered">WELCOME, EXPLORER</div><h2 id="modal-title">A little magic needs you.</h2><p class="modal-description">The island's portal has lost its sparkle.<br>Find <strong>5 number crystals</strong> and solve their puzzles to wake it up!</p><div class="intro-steps"><div>${icon("compass")}<b>Explore</b><span>Follow the floating numbers</span></div><div>${icon("diamond")}<b>Solve</b><span>Give each puzzle a try</span></div><div>${icon("cube")}<b>Build</b><span>Earn blocks as you go</span></div></div><p class="gentle-note">Take your time. Hints are always here to help.</p><button class="primary-button wide" id="begin-explore">I'm ready! ${icon("arrow")}</button><div class="intro-controls">${matchMedia("(pointer: coarse)").matches ? "Use the arrow pad to move. Drag the world to look around." : "WASD to move · Mouse to look · Space to jump · E to explore"}</div>`,
+    `<div class="modal-emblem mint">${icon("cube")}</div><div class="eyebrow centered">WELCOME, ISLAND HELPER</div><h2 id="modal-title">Your island needs a little you.</h2><p class="modal-description">A broken bridge. Some hungry sheep. A garden waiting to bloom.<br>Use a little maths to make <strong>five big changes</strong>!</p><div class="intro-steps"><div>${icon("cube")}<b>Gather</b><span>Pick up the supplies</span></div><div>${icon("book")}<b>Work it out</b><span>Count what the island needs</span></div><div>${icon("spark")}<b>Make it happen</b><span>Watch your world change</span></div></div><p class="gentle-note">No timers. Hints whenever you need them. Your completed jobs are saved.</p><button class="primary-button wide" id="begin-explore">Let's help the island! ${icon("arrow")}</button><div class="intro-controls">${matchMedia("(pointer: coarse)").matches ? "Use the arrow pad to move. Drag the world to look around." : "WASD to move · Mouse to look · Space to jump · E to help · G for a guide"}</div>`,
   );
   $("#begin-explore").onclick = () => {
     closeModal();
-    toast("Find a floating number, or use “Take me to the next crystal”.");
+    toast("Find the timber yard sign, or press G to go straight there.");
   };
 }
+function interactQuest(index) {
+  const phase = questPhase(round, index);
+  if (phase === "done") return;
+  if (phase === "locked") {
+    toast(
+      `First, ${QUESTS[activeQuest(round.collected)].title.toLowerCase()}. Press G for a guide.`,
+    );
+    return;
+  }
+  if (phase === "gather") {
+    if (!gatherQuest(round, index)) return;
+    world.gather(index);
+    saveNow();
+    updateHud();
+    sound("tap");
+    toast(
+      `${index === 1 || index === 4 ? "Inspection complete" : "Supplies collected"}! Press E to ${QUESTS[index].action.toLowerCase()}.`,
+    );
+    return;
+  }
+  showChallenge(index);
+}
 function showChallenge(index) {
-  if (round.collected[index]) return;
+  if (questPhase(round, index) !== "solve") return;
   activeChallenge = index;
   attempts = 0;
   const q = round.questions[index];
+  const quest = describeQuest(index, q);
   showModal(
-    `${modalClose("Return to exploring")}<div class="challenge-top"><span class="puzzle-badge">${icon("diamond")} NUMBER CRYSTAL ${index + 1}</span><span>${round.collected.filter(Boolean).length} / 5 found</span></div><h2 id="modal-title">A little number magic.</h2><p class="modal-description">Solve the puzzle to collect this crystal.</p><div class="equation" aria-label="${q.a} ${q.operator === "+" ? "plus" : "minus"} ${q.b} equals what?"><span>${q.a}</span><span class="operator">${q.operator}</span><span>${q.b}</span><span class="operator">=</span><span class="answer-blank">?</span></div><form id="answer-form"><label class="sr-only" for="answer">Your answer</label><input id="answer" name="answer" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="Your answer" autocomplete="off" autofocus required><button type="submit" class="primary-button">Check answer ${icon("arrow")}</button></form><div id="answer-feedback" class="answer-feedback" role="status" aria-live="polite">You've got this. Take your time.</div><button class="hint-button" id="show-hint">${icon("spark")} A little help, please</button><div id="hint-panel" hidden></div>`,
+    `${modalClose("Return to exploring")}<div class="challenge-top"><span class="puzzle-badge">${icon(quest.icon)} ISLAND JOB ${index + 1}</span><span>${round.collected.filter(Boolean).length} / 5 helped</span></div><h2 id="modal-title">${quest.title}</h2><p class="modal-description quest-story">${quest.story}</p><div class="resource-counts"><div>${icon(quest.icon)}<b>${q.a}</b><span>${quest.labels[0]}</span></div><div>${icon(quest.icon)}<b>${q.b}</b><span>${quest.labels[1]}</span></div></div><div class="equation" aria-label="${q.a} ${q.operator === "+" ? "plus" : "minus"} ${q.b} equals what?"><span>${q.a}</span><span class="operator">${q.operator}</span><span>${q.b}</span><span class="operator">=</span><span class="answer-blank">?</span></div><form id="answer-form"><label class="sr-only" for="answer">Your answer</label><input id="answer" name="answer" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="Your answer" autocomplete="off" autofocus required><button type="submit" class="primary-button">Check answer ${icon("arrow")}</button></form><div id="answer-feedback" class="answer-feedback" role="status" aria-live="polite">You've got this. Take your time.</div><button class="hint-button" id="show-hint">${icon("spark")} A little help, please</button><div id="hint-panel" hidden></div>`,
     "challenge",
   );
   bindClose();
@@ -293,7 +333,7 @@ function submitAnswer() {
     return;
   }
   const index = activeChallenge;
-  round.collected[index] = true;
+  if (!finishQuest(round, index, Number(raw))) return;
   save.solved++;
   save.totalCrystals++;
   if (attempts === 1) save.correctFirst++;
@@ -307,31 +347,29 @@ function submitAnswer() {
   $(".answer-blank").classList.add("solved");
   $("#answer-feedback").className = "answer-feedback success";
   $("#answer-feedback").textContent =
-    "Brilliant thinking! One crystal + 3 building blocks are yours.";
+    `${q.answer} ${QUESTS[index].resource} — you worked it out! You earned a crystal and 3 building blocks.`;
   $("#show-hint").hidden = true;
   $("#hint-panel").hidden = true;
-  $("#modal-title").textContent = [
-    "You made it sparkle!",
-    "Look at you go!",
-    "A little maths. Big magic!",
-    "Another bright idea!",
-    "Five crystals. One superstar!",
-  ][index];
+  $("#modal-title").textContent = "Your maths made a difference!";
   $("#modal-content").insertAdjacentHTML(
     "beforeend",
-    `<button class="primary-button wide" id="continue-adventure">${round.collected.every(Boolean) ? "Let’s wake the portal" : "Keep exploring"} ${icon("arrow")}</button>`,
+    `<button class="primary-button wide" id="continue-adventure">See what you made happen ${icon("arrow")}</button>`,
   );
   $("#continue-adventure").focus();
   $("#continue-adventure").onclick = () => {
-    closeModal();
-    if (round.collected.every(Boolean))
-      toast("All five crystals! Head to the glowing portal, then press E.");
+    closeModal(false);
+    $("#game-hud").hidden = true;
+    $("#quest-reveal").hidden = false;
+    $("#reveal-title").textContent = QUESTS[index].success;
+    $("#reveal-description").textContent = QUESTS[index].effect;
+    world.showReward(index);
+    $("#finish-reveal").focus();
   };
 }
 function pause() {
   if (currentScreen !== "play" || $("#modal").open) return;
   showModal(
-    `${modalClose("Resume game")}<div class="modal-emblem mint">${icon("cube")}</div><div class="eyebrow centered">TAKE A BREATHER</div><h2 id="modal-title">Your adventure can wait.</h2><p class="modal-description">Your number crystals are saved.<br>The island will be right here.</p><button class="primary-button wide" id="resume-game">Keep exploring ${icon("play")}</button><div class="pause-links"><button id="pause-help">${icon("help")} Controls & help</button><button id="pause-settings">${icon("settings")} Parent settings</button><button id="go-home">${icon("home")} Back to islands</button></div>`,
+    `${modalClose("Resume game")}<div class="modal-emblem mint">${icon("cube")}</div><div class="eyebrow centered">TAKE A BREATHER</div><h2 id="modal-title">Your adventure can wait.</h2><p class="modal-description">Your completed island jobs are saved.<br>The island will be right here.</p><button class="primary-button wide" id="resume-game">Keep exploring ${icon("play")}</button><div class="pause-links"><button id="pause-help">${icon("help")} Controls & help</button><button id="pause-settings">${icon("settings")} Parent settings</button><button id="go-home">${icon("home")} Back to islands</button></div>`,
   );
   bindClose();
   $("#resume-game").onclick = () => closeModal();
@@ -350,7 +388,7 @@ function goHome() {
 }
 function showHelp() {
   showModal(
-    `${modalClose()}<div class="modal-emblem mint">${icon("book")}</div><h2 id="modal-title">Adventure starts here.</h2><p class="modal-description">Collect five number crystals, then step through the portal. Every correct answer earns 3 blocks to build with!</p><div class="help-grid"><div><kbd>W A S D</kbd><span>Walk around the island</span></div><div><kbd>MOUSE</kbd><span>Look around (or drag)</span></div><div><kbd>SPACE</kbd><span>Jump over blocks</span></div><div><kbd>E</kbd><span>Try a nearby number crystal</span></div><div><kbd>G</kbd><span>Go straight to the next crystal</span></div><div><kbd>B</kbd><span>Switch building on or off</span></div><div><kbd>1 · 2 · 3</kbd><span>Choose your building block</span></div><div><kbd>RIGHT CLICK</kbd><span>Place a block nearby</span></div><div><kbd>LEFT CLICK</kbd><span>Mine a block you placed</span></div><div><kbd>ESC</kbd><span>Pause and release the mouse</span></div></div><p class="gentle-note">Arrow keys work too. On a touchscreen, use the arrow pad and drag to look. Stuck? “Take me to the next crystal” will help.</p><button class="primary-button wide" id="help-done">Got it ${icon("check")}</button>`,
+    `${modalClose()}<div class="modal-emblem mint">${icon("book")}</div><h2 id="modal-title">Adventure starts here.</h2><p class="modal-description">Follow the five island jobs in order. Press E to gather or inspect supplies, then E again to work out what the island needs. Your answer repairs the bridge, feeds the sheep, plants flowers, or powers the portal. Each job also earns 3 building blocks!</p><div class="help-grid"><div><kbd>W A S D</kbd><span>Walk around the island</span></div><div><kbd>MOUSE</kbd><span>Look around (or drag)</span></div><div><kbd>SPACE</kbd><span>Jump over blocks</span></div><div><kbd>E</kbd><span>Gather supplies or solve the current job</span></div><div><kbd>G</kbd><span>Go straight to the current island job</span></div><div><kbd>B</kbd><span>Switch building on or off</span></div><div><kbd>1 · 2 · 3</kbd><span>Choose your building block</span></div><div><kbd>RIGHT CLICK</kbd><span>Place a block nearby</span></div><div><kbd>LEFT CLICK</kbd><span>Mine a block you placed</span></div><div><kbd>ESC</kbd><span>Pause and release the mouse</span></div></div><p class="gentle-note">Arrow keys work too. On a touchscreen, use the arrow pad and drag to look. Stuck? the guide button will help.</p><button class="primary-button wide" id="help-done">Got it ${icon("check")}</button>`,
   );
   bindClose(currentScreen === "play");
   $("#help-done").onclick = () => closeModal(currentScreen === "play");
@@ -388,7 +426,7 @@ function complete() {
   saveNow();
   sound("complete");
   showModal(
-    `<div class="completion-stars">${icon("spark")}${icon("trophy")}${icon("spark")}</div><div class="eyebrow centered">ADVENTURE COMPLETE</div><h2 id="modal-title">You brought the magic back.</h2><p class="modal-description">Five puzzles solved. Five crystals found.<br>Look what a little thinking can do.</p><div class="reward-row"><span>${icon("diamond")}<b>5 crystals</b></span><span>${icon("cube")}<b>15 blocks earned</b></span></div><div class="unlocked-world">${cubeArt(WORLDS[Math.min(selected + 1, 2)].id)}<div><small>${selected < 2 ? "YOUR NEXT ADVENTURE IS UNLOCKED" : "YOU’VE EXPLORED EVERY WORLD"}</small><strong>${selected < 2 ? WORLDS[selected + 1].name : "A world of possibilities."}</strong></div>${icon("check")}</div><button class="primary-button wide" id="next-world">${selected < 2 ? "Explore the next world" : "Back to your islands"} ${icon("arrow")}</button><button class="text-button" id="stay-build">Stay here and build a little more</button>`,
+    `<div class="completion-stars">${icon("spark")}${icon("trophy")}${icon("spark")}</div><div class="eyebrow centered">ADVENTURE COMPLETE</div><h2 id="modal-title">You brought the magic back.</h2><p class="modal-description">A bridge repaired. Happy sheep. A blooming garden.<br>You made this island a better place.</p><div class="reward-row"><span>${icon("diamond")}<b>5 crystals</b></span><span>${icon("cube")}<b>15 blocks earned</b></span></div><div class="unlocked-world">${cubeArt(WORLDS[Math.min(selected + 1, 2)].id)}<div><small>${selected < 2 ? "YOUR NEXT ADVENTURE IS UNLOCKED" : "YOU’VE EXPLORED EVERY WORLD"}</small><strong>${selected < 2 ? WORLDS[selected + 1].name : "A world of possibilities."}</strong></div>${icon("check")}</div><button class="primary-button wide" id="next-world">${selected < 2 ? "Explore the next world" : "Back to your islands"} ${icon("arrow")}</button><button class="text-button" id="stay-build">Stay here and build a little more</button>`,
     "complete",
   );
   $("#next-world").onclick = () => {
@@ -426,9 +464,30 @@ function updatePosition({ x, z, yaw, nearby, portal }) {
   $("#interaction").hidden = nearby < 0 && !portal;
   $("#interaction span").textContent = portal
     ? "Step into the portal"
-    : `Solve number crystal ${nearby + 1}`;
+    : nearby >= 0
+      ? questPhase(round, nearby) === "locked"
+        ? `Help with ${QUESTS[activeQuest(round.collected)].location.toLowerCase()} first`
+        : questPhase(round, nearby) === "gather"
+          ? QUESTS[nearby].gather
+          : QUESTS[nearby].action
+      : "Explore the island";
 }
 
+function finishReveal() {
+  $("#quest-reveal").hidden = true;
+  $("#game-hud").hidden = false;
+  world.setMode("play");
+  if (!matchMedia("(pointer: coarse)").matches) world.lock();
+  if (round.collected.every(Boolean))
+    toast("Five good deeds! Press G to visit your restored portal.");
+}
+$("#finish-reveal").onclick = finishReveal;
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Escape" && !$("#quest-reveal").hidden) {
+    e.preventDefault();
+    finishReveal();
+  }
+});
 $("#start-adventure").onclick = () => startGame();
 $("#nav-play").onclick = () => $("#start-adventure").focus();
 $("#nav-worlds").onclick = () => {
@@ -483,7 +542,7 @@ updateStats();
 renderCards();
 try {
   world = new IslandWorld($("#world"), {
-    challenge: showChallenge,
+    challenge: interactQuest,
     complete,
     pause,
     tip: toast,

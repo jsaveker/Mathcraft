@@ -1,6 +1,6 @@
 # Mathcraft — Number Islands
 
-A playable, original voxel adventure for practising addition and subtraction. Explore a floating island, solve five number crystals, restore its portal, and unlock the next island. Correct answers also earn blocks for building.
+A playable, original voxel adventure for practising addition and subtraction. Explore a floating island and help with five physical jobs: gather timber, repair the river bridge, feed the sheep, plant a flower garden, and power the ancient portal. Correct answers visibly change the world and also earn blocks for building.
 
 ## Run locally
 
@@ -22,19 +22,19 @@ npm run preview
 
 ## Play
 
-| Control     | Action                                              |
-| ----------- | --------------------------------------------------- |
-| WASD        | Move                                                |
-| Mouse       | Look around; drag if mouse capture is unavailable   |
-| Arrow keys  | Move forward/backward and turn                      |
-| Space       | Jump                                                |
-| E           | Solve a nearby crystal or enter the restored portal |
-| G           | Go to the next crystal or the portal                |
-| B           | Toggle building                                     |
-| 1, 2, 3     | Select grass, wood, or crystal blocks               |
-| Right click | Place a block                                       |
-| Left click  | Mine a block you placed                             |
-| Escape      | Pause and release the mouse                         |
+| Control     | Action                                                                            |
+| ----------- | --------------------------------------------------------------------------------- |
+| WASD        | Move                                                                              |
+| Mouse       | Look around; drag if mouse capture is unavailable                                 |
+| Arrow keys  | Move forward/backward and turn                                                    |
+| Space       | Jump                                                                              |
+| E           | Gather or inspect supplies, then solve the current job; enter the restored portal |
+| G           | Go to the current island job or the portal                                        |
+| B           | Toggle building                                                                   |
+| 1, 2, 3     | Select grass, wood, or crystal blocks                                             |
+| Right click | Place a block                                                                     |
+| Left click  | Mine a block you placed                                                           |
+| Escape      | Pause and release the mouse                                                       |
 
 On touchscreens, use the direction pad, drag the world to look, and use the on-screen jump, interaction, and building buttons. Desktop is the primary play experience. In-app browsers that restrict pointer lock use drag-to-look automatically.
 
@@ -47,7 +47,10 @@ The island edge prevents falling. Scenery is preserved; players can mine their o
 - Both operands and results stay within the selected range. Subtraction never produces negative answers.
 - Hints explain counting on/back and splitting tens and ones, with dots grouped into rows of ten.
 - Mistakes invite another try; two missed answers reveal the hint automatically. There are no timers or lost lives.
-- Five puzzles per adventure, with fresh puzzles for replay. Three unlockable island themes: Meadow Isles, Crystal Peaks, and Sunset Sands.
+- Five jobs per adventure, with fresh puzzles for replay. Press E once to gather or inspect supplies, then E again to solve the contextual question. Each success includes a close-up of what changed. The bridge gains a solid walkable deck, the sheep receive apples, flowers grow from the counted seeds, and the portal powers up.
+- The planks counted in the timber job are exactly the planks already laid in the bridge job. Supplies stay positive where physical items are required; a fully charged portal can still have a zero-answer question.
+- Jobs unlock in order. Gathered supplies and completed world changes survive reloads. Existing saved crystals and unlocked worlds are preserved and mapped to completed jobs.
+- Three unlockable island themes: Meadow Isles, Crystal Peaks, and Sunset Sands.
 - Settings, puzzle progress, and world unlocks are saved in this browser's local storage. Each browser/device has its own progress. Building layouts and inventory are temporary.
 - Changing number settings takes effect on the next adventure, preserving an in-progress session until it ends or is restarted.
 - No accounts, analytics, or remote game services. Fonts and graphics are bundled or generated locally. Clearing browser site data removes progress.
@@ -58,6 +61,8 @@ The island edge prevents falling. Scenery is preserved; players can mine their o
 
 - `src/world.js`: scene, terrain, input, movement, collisions, building, particles, and portal.
 - `src/maths.js`: puzzle generation, save validation, persistence, and hints.
+- `src/quests.js`: contextual maths, job phases, and linked bridge quantities.
+- `src/quest-world.js`: physical supplies, bridge floor/collision, sheep feeding, planting, and success animations.
 - `src/main.js`: menus, quests, progression, accessibility labels, and sound.
 - `src/style.css`: responsive welcome screen, HUD, and dialogs.
 
@@ -69,9 +74,9 @@ npm run build
 npm run format:check
 ```
 
-Automated tests cover 9,000 generated questions, boundary answers, settings, corrupted saves, resumed rounds, replay, walking, turning, diagonal speed, gravity, jumping, collision, island boundaries, pausing, and touch movement inputs.
+The 42 automated tests cover 9,000 generated questions, linked quest quantities across every range and operation, job ordering, duplicate reward prevention, legacy saves, saved supplies, bridge floor/collision, boundary answers, settings, replay, walking, turning, diagonal speed, gravity, jumping, island boundaries, pausing, and touch movement inputs.
 
-Browser checks completed in the Codex embedded browser at desktop and phone-size viewports:
+Browser checks are performed in the Codex embedded browser at desktop and phone-size viewports. The original crystal adventure was verified through all three islands; the island-jobs update adds checks for gathering, sequential jobs, visible repairs, and restoration after reload:
 
 - Completed all 15 puzzles across the three worlds and entered every portal.
 - Confirmed incorrect-answer feedback and visual hints.
@@ -80,6 +85,8 @@ Browser checks completed in the Codex embedded browser at desktop and phone-size
 - Placed and mined a block; inventory changed from 12 to 11 and back to 12.
 - Checked the home screen, game HUD, and puzzle dialog for responsive overflow.
 - Checked shader compilation and browser warnings after the portal fix.
+- Completed the five new island jobs, checked their world changes and reward views, and restored a partly repaired bridge and a ready portal after reload.
+- Checked the new quest HUD, question, hint, and reward panels at a 390 × 844 viewport.
 
 Physical touchscreen use and native browser pointer lock still need testing on the children's target devices. Browser automation here exercised the drag-to-look fallback; automated movement tests cover held keyboard and touch inputs.
 
