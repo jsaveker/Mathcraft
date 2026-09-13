@@ -1,184 +1,146 @@
-# Mathcraft — Number Islands
+<p align="center">
+  <a href="https://saveker.org/mathcraft/">
+    <img src="docs/images/banner.svg" alt="Mathcraft — Small numbers. Big worlds. Five expeditions and five creative worlds." width="100%">
+  </a>
+</p>
 
-A playable, original voxel adventure for practising addition and subtraction. Explore five floating worlds with 25 different projects, from a farm rescue to a rocket launch. Correct answers visibly change the world and earn materials for building during adventures. Five permanent creative worlds offer unlimited materials, flight and TNT. Each explorer has separate progress, builds, settings, and a blocky avatar.
+<h1 align="center">Mathcraft — Number Islands</h1>
+
+<p align="center">
+  <strong>A little maths. A whole lot of possibility.</strong><br>
+  Explore floating islands, bring extraordinary worlds to life, and build something of your own.
+</p>
+
+<p align="center">
+  <a href="https://saveker.org/mathcraft/"><strong>Play Mathcraft →</strong></a>
+  &nbsp; · &nbsp;
+  <a href="docs/PLAYING.md">Player &amp; parent guide</a>
+  &nbsp; · &nbsp;
+  <a href="#run-locally">Run locally</a>
+  &nbsp; · &nbsp;
+  <a href="docs/DEVELOPMENT.md">Developer guide</a>
+</p>
+
+Mathcraft is a browser game made for children learning addition and subtraction. Inspired by the freedom of block-building games, it pairs familiar **WASD and mouse controls** with gentle maths practice and a generous creative sandbox. No timers, lost lives or accounts to create.
+
+[![Mathcraft welcome screen with a floating meadow island and five adventure destinations](docs/images/welcome.jpg)](https://saveker.org/mathcraft/)
+
+## Two ways to play
+
+**Go on an adventure.** Use addition and subtraction to repair bridges, uncover fossils, send an airship into the sky and launch a lunar rocket. Five expeditions offer **25 distinct projects**. Every completed job visibly changes its world.
+
+**Make a world your own.** Choose from five creative landscapes, fly to an open building site and start creating. Each world is roughly **256 blocks across**, with its own saved creations and room for **8,000 placed blocks**. All creative worlds are available from the start.
+
+| Learn through play                           | Create without a materials budget                      |
+| -------------------------------------------- | ------------------------------------------------------ |
+| Addition and subtraction up to **100**       | **36 block types**, including glass, glowstone and TNT |
+| Difficulty adjusts gradually for each skill  | Nine-slot hotbar, flight and fast travel               |
+| Visual hints, counting dots and another try  | Single blocks, lines, walls and floors                 |
+| Parent controls for range and operation      | Cottage, castle, tower and rocket blueprints           |
+| Up to six explorers with individual progress | Undo, redo and chain-reaction explosions               |
+
+## A look inside
+
+These are actual gameplay captures. Open an image to see it at full size.
+
+<table>
+  <tr>
+    <td width="50%"><a href="docs/images/maths-hints.jpg"><img src="docs/images/maths-hints.jpg" alt="A contextual addition question with a visual counting hint" width="100%"></a><br><strong>Maths with a purpose</strong><br>Work out what the island needs, with help whenever it is needed.</td>
+    <td width="50%"><a href="docs/images/block-library.jpg"><img src="docs/images/block-library.jpg" alt="The creative block library showing a selection of building materials" width="100%"></a><br><strong>A proper building kit</strong><br>Mix materials, colours and glowing blocks to make something personal.</td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/images/moon-frontier.jpg"><img src="docs/images/moon-frontier.jpg" alt="Moon Frontier with Earth above a lunar plain and crater ridges" width="100%"></a><br><strong>Moon Frontier</strong><br>Room for a moonbase beneath a sky full of stars.</td>
+    <td width="50%"><a href="docs/images/crystal-highlands.jpg"><img src="docs/images/crystal-highlands.jpg" alt="Crystal Highlands with snow-covered peaks, violet crystals and northern lights" width="100%"></a><br><strong>Crystal Highlands</strong><br>Snowy peaks, glowing crystals and an animated aurora.</td>
+  </tr>
+</table>
+
+## Five places to make your own
+
+The creative worlds have distinct landscapes, five travel destinations apiece and independent saves. The original village lives on in Grassland Valley.
+
+![Illustrated guide to Grassland Valley, Moon Frontier, Cloud Kingdom, Desert Horizons and Crystal Highlands](docs/images/worlds.svg)
+
+| Creative world        | Landscape                                               | Something to try                                 |
+| --------------------- | ------------------------------------------------------- | ------------------------------------------------ |
+| **Grassland Valley**  | Meadows, woodland groves and rolling hills              | A sprawling village or a castle in the woods     |
+| **Moon Frontier**     | Lunar plains, crater rims and Earth overhead            | A moonbase, rocket hangar or rover garage        |
+| **Cloud Kingdom**     | Broad terraces, drifting clouds and distant sky islands | An airship harbour or a kingdom above the clouds |
+| **Desert Horizons**   | Dunes, mesas, pyramids and an oasis                     | A desert palace or a lost city                   |
+| **Crystal Highlands** | Snowy ridges, giant crystals and northern lights        | An ice fortress or a glowing crystal city        |
+
+The four outer travel sites each offer a clear **36 × 36 foundation**. The land beyond them is buildable too. Materials are unlimited; the 8,000-block save limit applies separately to each world and explorer.
+
+<details>
+<summary><strong>Explore the five maths expeditions</strong></summary>
+
+| Expedition        | What you bring to life                                                        |
+| ----------------- | ----------------------------------------------------------------------------- |
+| **Meadow Isles**  | A timber yard, river bridge, flock of sheep, garden and ancient portal        |
+| **Crystal Peaks** | An ice passage, moving minecart, summit lift, light prisms and rescue beacons |
+| **Sunset Sands**  | A dinosaur fossil, reservoir, sun mosaic, treasure door and sand ship         |
+| **Cloud Harbour** | Wind turbines, a balloon, postal glider, sky chimes and an airship            |
+| **Moonbase Nova** | Solar panels, a six-wheeled rover, habitat, space antenna and rocket          |
+
+Complete each expedition to unlock the next. Replays bring fresh questions, and unfinished adventures resume where you left them.
+
+</details>
+
+## Made for curious minds
+
+- **A steady learning curve.** Addition and subtraction progress independently. New explorers begin with numbers up to 20, then work towards the parent-selected limit of 10, 20 or 100.
+- **Support without pressure.** Hints explain counting on, counting back, and splitting tens and ones. Mistakes invite another attempt; answering speed is never measured.
+- **A space for each child.** Up to six named explorers can choose a fox, astronaut, dragon or panda avatar. Each keeps their own progress, settings and buildings.
+- **Saved as you play.** Progress lives in this browser on this device. There is no account or cross-device sync; clearing site data removes saves.
+
+Read the [player and parent guide](docs/PLAYING.md) for learning settings, saves and the complete controls.
+
+## Pick up the controls
+
+| Control                | Action                                                               |
+| ---------------------- | -------------------------------------------------------------------- |
+| **WASD + mouse**       | Move and look around; drag to look when mouse capture is unavailable |
+| **Space / Escape**     | Jump / pause                                                         |
+| **E**                  | Interact in adventures; open the block library in creative worlds    |
+| **G / M**              | Travel to a job or building site / change creative world             |
+| **B / 1–9**            | Toggle building / select a creative hotbar slot                      |
+| **Right / left click** | Place / mine player-built blocks                                     |
+| **F / T**              | Toggle creative flight / choose building tools and blueprints        |
+| **Q / Z / Y**          | Light TNT / undo / redo                                              |
+
+Desktop offers the full keyboard-and-mouse experience. Touch controls are also available. TNT affects player-built blocks; terrain and scenery stay intact, and there is no player damage.
 
 ## Run locally
 
-Requires Node.js 20.19+ or 22.12+ and a browser with WebGL 2.
+Use **Node.js 20.19+ or 22.12+** and a browser with **WebGL 2**.
 
 ```sh
-npm install --include=dev
+git clone https://github.com/jsaveker/Mathcraft.git
+cd Mathcraft
+npm ci --include=dev
 npm run dev
 ```
 
-Open the local URL printed by Vite, usually `http://localhost:5173`. For a production build:
+Open the URL Vite prints, usually `http://localhost:5173`.
 
 ```sh
-npm run build
-npm run preview
+npm test                 # Game logic, learning, saves, movement and creative tools
+npm run format:check     # Source and documentation formatting
+npm run build            # Static production build in dist/
+npm run preview          # Preview the production build locally
 ```
 
-`dist/` contains a static application that can be hosted without a backend. The Saveker website serves a versioned static release at `https://saveker.org/mathcraft/`.
+## Built with
 
-## Play
+**Three.js · WebGL 2 · JavaScript · HTML/CSS · Vite**
 
-| Control     | Action                                                                            |
-| ----------- | --------------------------------------------------------------------------------- |
-| WASD        | Move                                                                              |
-| Mouse       | Look around; drag if mouse capture is unavailable                                 |
-| Arrow keys  | Move forward/backward and turn                                                    |
-| Space       | Jump                                                                              |
-| E           | Gather or inspect supplies, then solve the current job; enter the restored portal |
-| G           | Go to the current island job; open creative travel while building                 |
-| V           | Choose a creative world, or return to adventures while building                   |
-| L           | Go to the island’s special landmark                                               |
-| B           | Toggle building                                                                   |
-| 1, 2, 3     | Select grass, wood, or crystal blocks                                             |
-| Right click | Place a block                                                                     |
-| Left click  | Mine a block you placed                                                           |
-| Escape      | Pause and release the mouse                                                       |
+The landscapes, textures, structures, avatars, effects and audio are generated in code. Instanced blocks and chunked terrain meshes keep the worlds efficient. The UI uses native HTML controls, and the game builds to a static site without a backend.
 
-On touchscreens, use the direction pad, drag the world to look, and use the on-screen jump, interaction, and building buttons. Desktop is the primary play experience. In-app browsers that restrict pointer lock use drag-to-look automatically.
+See the [developer guide](docs/DEVELOPMENT.md) for architecture, tests and publishing to Cloudflare Pages. The public source lives here; [saveker.org/mathcraft](https://saveker.org/mathcraft/) serves the built release through the separate Saveker website repository.
 
-The island edge prevents falling. Scenery is preserved; players can mine their own placed blocks. Each new explorer starts with 36 blocks. Every correct answer earns 3 more, and each island landmark awards 12 blocks once per explorer. Adventure islands each save up to 600 placed blocks. Each creative world has unlimited materials and saves up to 8,000 blocks, with a height limit of 80 and a landscape roughly 256 blocks across (over 12 times the previous village’s land area). Village building and mining never change earned adventure materials.
+## Feedback
 
-## Maths and progress
+Found a bug or have an idea? [Open an issue](https://github.com/jsaveker/Mathcraft/issues). For bugs, include the browser, device, world and steps to reproduce. Please leave children's names and saved profile data out of public reports.
 
-- The parent limit defaults to **100**, as requested. New explorers start with manageable numbers up to 20; addition and subtraction progress separately through six difficulty steps.
-- Parent settings offer ranges of 10, 20, or 100 and addition, subtraction, or a mixture.
-- Three first-try answers without hints advance the practised skill one step. Two questions needing help ease it back one step. Answering speed is never measured. Parent settings show each skill and offer a starting-point override.
-- Both operands and results stay within the selected range. Subtraction never produces negative answers.
-- Hints explain counting on/back and splitting tens and ones, with dots grouped into rows of ten.
-- Mistakes invite another try; two missed answers reveal the hint automatically. There are no timers or lost lives.
-- Five jobs per adventure, with fresh puzzles for replay. Press E once to gather or inspect supplies, then E again to solve the contextual question. Each success includes a close-up of what changed. The bridge gains a solid walkable deck, the sheep receive apples, flowers grow from the counted seeds, and the portal powers up.
-- Meadow’s first two jobs share the same planks, with only a small extra quantity to calculate. The next unopened job adapts after an answer; inspected questions, attempts and hint use stay fixed across closing a dialog or reloading. New expedition results stay positive; legacy zero-answer questions are retained.
-- Jobs unlock in order. Gathered supplies and completed world changes survive reloads. Existing saved crystals and unlocked worlds are preserved and mapped to completed jobs.
-- Five unlockable expeditions, with distinct routes and animated machinery. Children who completed the original three already have Cloud Harbour unlocked. An unfinished older round retains its original five jobs and exact questions; its next replay uses the new expedition.
-- Up to six named explorers can choose a fox, astronaut, dragon, or panda avatar. Each has separate settings, puzzles, world unlocks, discoveries, inventory, and building layouts. Everything is saved in this browser’s local storage after each change; it does not sync between devices.
-- Changing number settings takes effect on the next adventure, preserving an in-progress session until it ends or is restarted.
-- No accounts or remote game services are needed. Fonts and graphics are bundled or generated locally. Clearing browser site data removes profiles and progress.
+---
 
-## Five different expeditions
-
-| World         | Five projects                                                                                                             |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Meadow Isles  | Gather timber, finish a walkable bridge, feed the flock, plant a garden, power the portal                                 |
-| Crystal Peaks | Melt an ice barrier, load a moving minecart, raise the summit lift, turn light prisms, light rescue beacons               |
-| Sunset Sands  | Uncover a dinosaur fossil, pump a reservoir, restore a sun mosaic, lift a counterweighted treasure door, send a sand ship |
-| Cloud Harbour | Start wind turbines, release a balloon, deliver post by glider, ring sky chimes, launch an airship                        |
-| Moonbase Nova | Unfold solar panels, deploy a six-wheeled rover, inflate a habitat, transmit through a space antenna, launch a rocket     |
-
-The controls and addition/subtraction puzzles stay familiar. Each project changes its own machinery, and each world has its own scenery: snowy peaks, desert ruins, suspended sky docks, or a crater and Earth above a moon base. Complete all five jobs to activate the onward portal. The rocket reveal camera follows its ascent.
-
-## Your creative worlds and discoveries
-
-Use **My build worlds** on the welcome screen or **V** during an adventure to choose any creative destination. All five are available immediately, independently of maths-world unlocks. Use **M / Change world** while building. Each explorer keeps separate creations in Grassland Valley, Moon Frontier, Cloud Kingdom, Desert Horizons and Crystal Highlands. Grassland Valley retains the original village, its saved buildings and its flat central foundations; the landscape expands around them. Use 36 block types including bricks, logs, glass, coloured cubes, glowstone, ice and TNT. Choose nine favourites for your hotbar; favourites and creations are saved separately for each explorer. Builds on the adventure islands also stay saved when travelling or starting another puzzle round.
-
-Creative controls:
-
-| Control             | Creative action                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------- |
-| E or I              | Open the block library; choose a replacement for the selected hotbar slot             |
-| 1–9                 | Select a favourite block                                                              |
-| T                   | Choose single blocks, a line, wall, floor, or a cottage/castle/tower/rocket blueprint |
-| Right click / Place | Build; hold right click to repeat single blocks                                       |
-| Left click / Mine   | Remove player-built blocks; hold when mouse capture is active                         |
-| F                   | Toggle flight; Space/up ascends, Shift/down descends                                  |
-| R                   | Rotate a blueprint before placing                                                     |
-| Q / Light TNT       | Light the aimed TNT block’s three-second fuse                                         |
-| Z / Undo            | Undo the last action, stop a fuse, or restore an entire blast                         |
-| Y / Redo            | Redo an undone action                                                                 |
-
-Use **G / Travel** to jump to one of five sites in the current world. Each of the four outer sites has an open 36 × 36 foundation, and the surrounding landscape is also buildable. Flight travels at 18 blocks per second. The minimap scales to the expanded boundary and shows coordinates. Arrival places the explorer above any buildings at the destination.
-
-| Creative world    | Landscape                                                             |
-| ----------------- | --------------------------------------------------------------------- |
-| Grassland Valley  | The original village, open meadows, woodland groves and rolling hills |
-| Moon Frontier     | Lunar plains, crater rims, a landing camp, stars and a large Earth    |
-| Cloud Kingdom     | Terraces, harbour arches, cloud banks and distant floating islands    |
-| Desert Horizons   | Dunes, mesas, pyramids, palms and an oasis                            |
-| Crystal Highlands | Snow-capped ridges, giant crystals and animated northern lights       |
-
-Each world keeps its own 8,000-block allowance. Switching worlds does not move or replace buildings. The last selected world is remembered per explorer. As before, saves are local to the browser and device.
-
-Lines, walls and floors use two placed corners, up to 24 blocks apart. Flying permits midair placement. A wireframe previews the design, turning red if the free cells cannot fit. Blueprints preserve existing blocks in overlapping cells. Each brush, blueprint and TNT chain counts as one undo action; history retains 24 actions during the current creative-world visit and resets on leaving or reloading.
-
-TNT clears player-built cubes within 4.5 blocks and triggers nearby TNT. Terrain and village scenery remain intact. There is no player damage. Fuses pause in menus and stop when leaving; completed damage is autosaved even during a longer chain. Explosions use procedural particles and sound, with fewer particles for reduced-motion preferences. The sound toggle applies to explosions too. Restored blocks cannot trap the explorer: overlapping builds lift them onto the highest block at that position.
-
-The first three islands also have optional landmarks. Use **Discover / L**, then **E**:
-
-- **Meadow Isles:** a waterwheel and walkable lookout with an aqueduct spilling a waterfall over the island edge. Open the sluice to set the wheel turning.
-- **Crystal Peaks:** a glowing cavern, stepped mountain ridge, snow-capped peaks, stars, and animated northern lights. Play the mint–violet–gold crystal sequence to awaken the aurora.
-- **Sunset Sands:** dunes, palms, distant pyramids, and a temple with walkable terraces. Align three sun rings to open the rotating gate.
-
-Discoveries are optional additions to the five maths quests. Their rewards are awarded only once per explorer. Completed discoveries are restored when returning to an island.
-
-The first explorer inherits the original game’s maths progress and unlocks. The old `mathcraft-save` record is retained, and the new `mathcraft-family-v2` record becomes authoritative. Old builds were temporary and cannot be recovered, so migrated explorers receive the starter stock plus materials for their previously earned crystals. A revision check prevents an older open tab from overwriting a newer family save.
-
-## Implementation
-
-[Three.js WebGLRenderer](https://threejs.org/docs/pages/WebGLRenderer.html) renders the world. Instanced blocks reduce draw calls. Terrain, textures, trees, structures, clouds, animals, portal effects, and audio are generated in code. The UI uses HTML/CSS and native dialogs. Vite builds the application. Fonts are Outfit and DM Sans, distributed through Fontsource under the SIL Open Font License; their licence files are included in the dependencies.
-
-- `src/creative-worlds.js`: destination catalogue, flat travel sites and deterministic terrain heights.
-- `src/creative-terrain.js`: exposed-face terrain meshes split into spatial chunks for culling.
-- `src/creative-scenery.js`: themed creative hubs, landmarks and distant scenery.
-- `src/blocks.js`: stable block palette, saved hotbar validation, brushes and blueprints.
-- `src/voxel-build.js`: instanced construction meshes and spatial ray/collision lookup.
-- `src/creative-builder.js`: creative tools, previews, transactional undo and TNT chains.
-- `src/build-materials.js`: procedural block textures and glass/glowing materials.
-- `src/world.js`: scene, terrain, input, movement, collisions, building, particles, and portal.
-- `src/maths.js`: world catalogue, rounds, save validation, persistence, and hints.
-- `src/learning.js`: bounded skill progression, question bands, and persistent answer evidence.
-- `src/adventures.js`: world-specific routes, objectives and question stories.
-- `src/adventure-world.js`: twenty animated projects, protected machinery footprints and reveal cameras.
-- `src/quests.js`: contextual maths, job phases, and linked bridge quantities.
-- `src/quest-world.js`: physical supplies, bridge floor/collision, sheep feeding, planting, and success animations.
-- `src/main.js`: profiles, menus, quests, discoveries, progression, accessibility labels, and sound.
-- `src/profiles.js`: validated family saves, legacy migration, separate inventories/builds, and revision checks.
-- `src/biomes.js`: village, landscape variations, landmark activities, physical surfaces, and aurora.
-- `src/explorer-art.js`: code-generated explorer avatars and escaped profile text.
-- `src/style.css`: responsive welcome screen, HUD, and dialogs.
-
-## Verification
-
-```sh
-npm test
-npm run build
-npm run format:check
-```
-
-The 77 automated tests cover adaptive number bands and carrying/borrowing, skill progression and support, inspected-question stability, all 20 new animated models and their paused/restored states, five-world routes and saves, plus profile isolation, inventory conservation, saved build placement/restoration/mining, legacy migration, stale-tab conflicts, one-time discovery rewards, landmark surfaces, and 9,000 generated questions, linked quest quantities across every range and operation, job ordering, duplicate reward prevention, legacy saves, saved supplies, bridge floor/collision, boundary answers, settings, replay, walking, turning, diagonal speed, gravity, jumping, island boundaries, pausing, and touch movement inputs.
-
-Browser checks are performed in the Codex embedded browser at desktop and phone-size viewports. Previous releases were checked through the original three islands, all three landmarks, two separate explorer profiles, and saved village building:
-
-- Completed all 15 puzzles across the three worlds and entered every portal.
-- Confirmed incorrect-answer feedback and visual hints.
-- Reloaded during a partial round and resumed with the saved crystals.
-- Verified saved parent settings apply to the next round.
-- Placed and mined a block; inventory changed from 12 to 11 and back to 12.
-- Checked the home screen, game HUD, and puzzle dialog for responsive overflow.
-- Checked shader compilation and browser warnings after the portal fix.
-- Completed the five new island jobs, checked their world changes and reward views, and restored a partly repaired bridge and a ready portal after reload.
-- Checked the quest HUD, question, hint, reward, profile picker, and sun-ring activity at a 390 × 844 viewport.
-- Placed a village block, reloaded, restored it with the same material/inventory, and mined it back into inventory.
-- Switched between two explorers with separate builds and number ranges.
-- Completed the crystal melody (including a wrong note) and aligned the sun rings.
-- Revisited a landmark without receiving duplicate materials, then reloaded and verified its reward in the village.
-
-For the five-expedition release, browser QA completed all 25 jobs and onward portals, checked desktop (1280 × 720) and phone (390 × 844) layouts, confirmed the new world unlocks on an existing profile, exercised an incorrect answer and hints, changed the learning starting point, and reloaded an inspected question with its hint intact. The airship and rocket reveal cameras were checked after framing fixes. The browser console had no errors or warnings.
-
-Physical touchscreen use and native browser pointer lock still need testing on the children's target devices. Browser automation here exercised the drag-to-look fallback; automated movement tests cover held keyboard and touch inputs.
-
-## Publish to the Saveker website
-
-Mathcraft is maintained in this repository. The website repository hosts a built snapshot under `public/mathcraft/`, alongside its other static experiences. This keeps the game independent of the website's React and Three.js versions.
-
-After testing and committing the Mathcraft source:
-
-```sh
-npm run export:website -- /path/to/saveker-website/public/mathcraft
-```
-
-The export builds asset URLs for `/mathcraft/`, includes the third-party licence notices, and writes a `release.json` with the source commit and SHA-256 of every release file. It refuses to export uncommitted source or replace an unrelated directory.
-
-Run the website's normal `bun run build`, then commit and push its Mathcraft release files. The website's existing Cloudflare Pages Git integration publishes the update. Pages serves `/mathcraft/` as a static directory; no website SPA route is required. Verify the live release manifest and game after deployment.
+An independent project by [Jim Saveker](https://saveker.org). Mathcraft is inspired by block-building games and is not affiliated with Minecraft, Mojang or Microsoft. Fonts: Outfit and DM Sans, distributed through Fontsource under the SIL Open Font License. See the [asset notes](docs/images/README.md) for screenshot and illustration provenance.
