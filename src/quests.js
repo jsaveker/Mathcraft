@@ -1,3 +1,4 @@
+import { ADVENTURES } from "./adventures.js";
 export const QUESTS = [
   {
     id: "timber",
@@ -95,7 +96,23 @@ export function finishQuest(round, index, answer) {
   round.collected[index] = true;
   return true;
 }
-export function describeQuest(index, q) {
+export function questsFor(worldId = "meadow", round = null) {
+  return round && round.layoutVersion !== 2
+    ? QUESTS
+    : ADVENTURES[worldId] || QUESTS;
+}
+export function describeQuest(index, q, worldId = "meadow", round = null) {
+  const quest = questsFor(worldId, round)[index];
+  if (quest.plus) {
+    const plus = q.operator === "+";
+    return {
+      ...quest,
+      story: (plus ? quest.plus : quest.minus)
+        .replaceAll("{a}", q.a)
+        .replaceAll("{b}", q.b),
+      labels: quest.labels[plus ? 0 : 1],
+    };
+  }
   const { a, b, operator } = q;
   const plus = operator === "+";
   const stories = [

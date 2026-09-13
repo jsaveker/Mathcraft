@@ -32,6 +32,13 @@ export const LANDMARKS = {
 // Keep the central quest routes stable while giving the outer landscape its own shape.
 export function terrainLevel(id, x, z, original) {
   if (id === "village") return 1;
+  if (id === "sky" && Math.abs(x) < 17 && Math.abs(z) < 16) return 1;
+  if (id === "moon") {
+    const crater = Math.hypot(x + 12, z - 1);
+    if (crater < 3) return 0;
+    if (crater >= 3 && crater < 4.6) return 2;
+    if (Math.abs(x) < 17 && Math.abs(z) < 16) return 1;
+  }
   if (id === "cavern" && z < -16)
     return Math.max(
       original,
@@ -58,6 +65,8 @@ export class BiomeWorld {
     if (id === "meadow") this.lookout();
     if (id === "cavern") this.cavern();
     if (id === "sunset") this.temple();
+    if (id === "sky") this.harbour();
+    if (id === "moon") this.moon();
   }
   box(mat, x, y, z, sx = 1, sy = 1, sz = 1) {
     this.world.addBatch(mat, x, y, z, sx, sy, sz);
@@ -89,6 +98,169 @@ export class BiomeWorld {
     sprite.scale.set(width, width / 5, 1);
     this.root.add(sprite);
     return sprite;
+  }
+  harbour() {
+    // Open docks, suspended arches and coloured pennants frame the flying machines.
+    for (const [x, z] of [
+      [-14, 3],
+      [-14, -8],
+      [14, -11],
+    ]) {
+      for (const side of [-1, 1]) {
+        this.box("white", x + side * 2, 4, z, 0.55, 5, 0.55);
+        this.box("gold", x + side * 2, 6.5, z, 0.85, 0.3, 0.85);
+      }
+      this.box("white", x, 6, z, 4.8, 0.4, 0.5);
+      for (let i = 0; i < 7; i++)
+        this.box(
+          i % 2 ? "coral" : "water",
+          x - 1.8 + i * 0.6,
+          5.65,
+          z,
+          0.42,
+          0.6,
+          0.07,
+        );
+      this.box("plank", x, 1.6, z, 5, 0.15, 4);
+    }
+    this.sign("Cloud Harbour · skyward bound", -13, 3.8, 6, 5);
+    for (let i = 0; i < 7; i++) {
+      const x = -36 + i * 12,
+        y = 12 + Math.sin(i * 1.7) * 6,
+        z = -38;
+      this.box("white", x, y, z, 8, 2.5, 5);
+      this.box("white", x + 2, y + 1.3, z, 4, 2, 4);
+    }
+  }
+  moon() {
+    this.sign("Moonbase Nova · a giant leap", -12, 3.6, 7, 4.8);
+    // A recognisable Earth and star field replace the atmosphere and waterfalls.
+    const earth = new THREE.Group();
+    earth.position.set(-28, 27, -50);
+    this.root.add(earth);
+    const mapCanvas = document.createElement("canvas");
+    mapCanvas.width = 512;
+    mapCanvas.height = 256;
+    const ctx = mapCanvas.getContext("2d");
+    ctx.fillStyle = "#398ccb";
+    ctx.fillRect(0, 0, 512, 256);
+    const continents = [
+      [
+        [60, 45],
+        [110, 28],
+        [170, 43],
+        [159, 65],
+        [133, 77],
+        [125, 111],
+        [100, 100],
+        [87, 78],
+        [65, 68],
+      ],
+      [
+        [133, 108],
+        [173, 116],
+        [194, 143],
+        [179, 177],
+        [158, 217],
+        [146, 190],
+        [150, 153],
+      ],
+      [
+        [236, 85],
+        [258, 68],
+        [283, 73],
+        [291, 100],
+        [280, 116],
+        [254, 113],
+      ],
+      [
+        [250, 113],
+        [291, 108],
+        [307, 140],
+        [284, 189],
+        [269, 168],
+        [252, 135],
+      ],
+      [
+        [285, 52],
+        [350, 31],
+        [423, 59],
+        [446, 87],
+        [407, 106],
+        [388, 130],
+        [358, 119],
+        [333, 90],
+        [300, 100],
+      ],
+      [
+        [396, 169],
+        [432, 162],
+        [452, 186],
+        [422, 207],
+        [396, 190],
+      ],
+    ];
+    ctx.fillStyle = "#87bf87";
+    continents.forEach((points) => {
+      ctx.beginPath();
+      points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+      ctx.fill();
+    });
+    ctx.fillStyle = "#eaf9ff";
+    ctx.fillRect(0, 0, 512, 17);
+    ctx.fillRect(0, 242, 512, 14);
+    ctx.globalAlpha = 0.5;
+    for (let i = 0; i < 18; i++) {
+      ctx.fillRect((i * 97) % 500, 25 + ((i * 31) % 195), 40 + (i % 3) * 15, 3);
+    }
+    const earthMap = new THREE.CanvasTexture(mapCanvas);
+    earthMap.colorSpace = THREE.SRGBColorSpace;
+    const globe = new THREE.Mesh(
+      new THREE.SphereGeometry(10, 48, 32),
+      new THREE.MeshStandardMaterial({
+        map: earthMap,
+        emissive: 0x173557,
+        emissiveIntensity: 0.5,
+        roughness: 0.8,
+      }),
+    );
+    globe.rotation.y = -1.7;
+    earth.add(globe);
+    const starGeo = new THREE.BufferGeometry(),
+      stars = [];
+    for (let i = 0; i < 280; i++) {
+      const a = i * 2.39996,
+        r = 80 + (i % 9) * 4;
+      stars.push(Math.cos(a) * r, 14 + (i % 43) * 1.7, Math.sin(a) * r);
+    }
+    starGeo.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(stars, 3),
+    );
+    this.root.add(
+      new THREE.Points(
+        starGeo,
+        new THREE.PointsMaterial({
+          color: 0xd9e9ff,
+          size: 0.2,
+          sizeAttenuation: true,
+        }),
+      ),
+    );
+    // A small landing camp overlooks a walkable crater.
+    for (const [x, z] of [
+      [-16, -9],
+      [-17, 12],
+      [16, -12],
+    ]) {
+      this.box("white", x, 2.4, z, 2.2, 1.8, 2.2);
+      this.box("water", x, 2.5, z + 1.11, 1.5, 0.6, 0.05);
+      this.box("gold", x, 3.8, z, 0.08, 1.2, 0.08);
+    }
+    this.box("white", -12, 2, 1, 0.5, 1, 0.5);
+    this.box("gold", -12, 3.5, 1, 0.08, 3, 0.08);
+    this.box("coral", -11.3, 4.5, 1, 1.4, 0.7, 0.06);
   }
   village() {
     this.sign("Your village · your imagination", 0, 4, 1, 5);

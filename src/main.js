@@ -3,7 +3,7 @@ import "@fontsource-variable/dm-sans/wght.css";
 import "./style.css";
 import { IslandWorld, SHRINES, PORTAL } from "./world.js";
 import {
-  QUESTS,
+  questsFor,
   activeQuest,
   questPhase,
   gatherQuest,
@@ -11,6 +11,12 @@ import {
   describeQuest,
 } from "./quests.js";
 import { WORLDS, createRound, hintFor } from "./maths.js";
+import {
+  recordPractice,
+  preparePractice,
+  learningLabel,
+  cleanLearning,
+} from "./learning.js";
 
 import {
   loadFamily,
@@ -53,8 +59,19 @@ const icons = {
 };
 const icon = (name, cls = "") =>
   `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.spark}</svg>`;
-const cubeArt = (theme = "meadow") =>
-  `<svg viewBox="0 0 90 82" class="island-icon ${theme}" aria-hidden="true"><path class="soil-face" d="m12 43 33-18 33 18v18L45 79 12 61Z"/><path class="side-face" d="M45 61v18L12 61V43Z"/><path class="grass-face" d="m12 43 33-18 33 18-33 18Z"/><path fill="#8f694e" d="M40 40V21h8v20l-4 3Z"/><path class="leaf-face" d="m27 14 17-9 18 9v18l-18 9-17-9Z"/><path class="top-face" d="m27 14 17-9 18 9-18 10Z"/><path fill="#ffffff" opacity=".2" d="m44 24 18-10v18l-18 9Z"/></svg>`;
+const cubeArt = (theme = "meadow") => {
+  const art = {
+    meadow:
+      '<path fill="#8f694e" d="M40 40V21h8v20l-4 3Z"/><path fill="#72ac62" d="m27 14 17-9 18 9v18l-18 9-17-9Z"/><path fill="#9bc880" d="m27 14 17-9 18 9-18 10Z"/>',
+    cavern:
+      '<path fill="#a6cddd" d="m16 46 19-36 17 34Z"/><path fill="#efffff" d="m27 24 8-14 7 14-7-4Z"/><path fill="#b291ef" d="m41 38 10-29 13 28-12 13Z"/><path fill="#e4cdff" d="m51 9 1 41 12-13Z"/>',
+    sunset:
+      '<path fill="#edbd69" d="M19 49 45 13 72 49Z"/><path fill="#c5914b" d="M45 13v40l27-4Z"/><path fill="#704d39" d="M40 49V38h10v12Z"/><circle fill="#ffe8a1" cx="68" cy="16" r="8"/>',
+    sky: '<path fill="#bfedf5" d="M14 25q4-18 31-18t31 18q-4 15-31 15T14 25Z"/><path fill="#6aabc6" d="M15 25h60v5H15Z"/><path fill="#937251" d="M34 43h23v9H34Z"/><path stroke="#b29256" stroke-width="2" d="m35 36 3 7m17-7-3 7"/>',
+    moon: '<path fill="#eaf5ff" d="M34 40V17L45 4l11 13v23Z"/><path fill="#e18c7a" d="m34 29-8 15h8m22-15 8 15h-8"/><path fill="#f8c468" d="m37 41 8 18 8-18Z"/><circle cx="45" cy="24" r="6" fill="#69b8e9"/>',
+  };
+  return `<svg viewBox="0 0 90 82" class="island-icon ${theme}" aria-hidden="true"><path class="soil-face" d="m12 43 33-18 33 18v18L45 79 12 61Z"/><path class="side-face" d="M45 61v18L12 61V43Z"/><path class="grass-face" d="m12 43 33-18 33 18-33 18Z"/>${art[theme] || art.meadow}</svg>`;
+};
 let family = loadFamily();
 let profile = activeProfile(family);
 let save = profile.progress;
@@ -68,6 +85,7 @@ let selected = 0,
   world,
   toastTimer,
   firstSession = true;
+const currentQuests = () => questsFor(WORLDS[selected].id, round);
 let audioCtx;
 function sound(kind) {
   if (!save.sound) return;
@@ -131,14 +149,14 @@ document.querySelector("#app").innerHTML = `
    <section class="hero" aria-labelledby="hero-title">
      <div class="eyebrow"><span class="live-dot"></span> AN ADVENTURE THAT ADDS UP</div>
      <h1 id="hero-title">Big adventures.<br>Little <span>numbers.</span></h1>
-     <p class="hero-description">Build a bridge. Feed a friend. Make an island bloom.<br>A little maths can make a big difference.</p>
+     <p class="hero-description">Uncover fossils. Fly an airship. Launch a rocket.<br>Five worlds, five different adventures.</p>
      <button class="primary-button hero-play" id="start-adventure">Let's play ${icon("arrow")}</button>
      <button class="village-entry" id="visit-village">${icon("home")} <span>My village<small>Your own place to build & keep</small></span>${icon("arrow")}</button><div class="play-note" id="save-status">Village, builds & progress saved on this device</div>
      <div class="learning-tags"><span><b>+</b> Addition</span><span><b>−</b> Subtraction</span><span id="range-tag">Up to 100</span></div>
    </section>
    <div class="scene-caption"><span class="caption-line"></span><span id="scene-biome">01 / THE GRASSLANDS</span></div>
    <div class="world-callout"><span class="callout-star">${icon("spark")}</span><div>A little maths.<br><strong>A whole lot of possibility.</strong></div></div>
-   <section class="worlds-section" id="worlds-section" aria-labelledby="worlds-title"><div class="section-heading"><h2 id="worlds-title">Your next adventure</h2><span>3 worlds. Endless possibilities.</span></div><div class="world-cards" id="world-cards"></div></section>
+   <section class="worlds-section" id="worlds-section" aria-labelledby="worlds-title"><div class="section-heading"><h2 id="worlds-title">Your next adventure</h2><span>${WORLDS.length} worlds. 25 things to make happen.</span></div><div class="world-cards" id="world-cards"></div></section>
    <footer class="home-footer"><span><i class="live-dot"></i> MADE FOR CURIOUS MINDS</span><span>No timers. No pressure. Just play.</span><button id="sound-home" aria-label="Mute sound">${icon("sound")} Sound on</button></footer>
  </main>
  <section id="game-hud" hidden aria-label="Game controls and progress">
@@ -225,7 +243,7 @@ function bindClose(resume = true) {
   $("#modal-close")?.addEventListener("click", () => closeModal(resume));
 }
 function updateHud() {
-  $("#landmark-guide").hidden = villageMode;
+  $("#landmark-guide").hidden = villageMode || !LANDMARKS[WORLDS[selected].id];
   $(".minimap").classList.toggle("village-map", villageMode);
   $("#game-village").innerHTML =
     `${icon(villageMode ? "compass" : "home")} ${villageMode ? "Adventures" : "Village"} <kbd>V</kbd>`;
@@ -245,18 +263,18 @@ function updateHud() {
   }
   const count = round.collected.filter(Boolean).length;
   const next = activeQuest(round.collected);
-  const quest = QUESTS[next];
+  const quest = currentQuests()[next];
   $("#round-crystals").textContent = `${count} / 5`;
   $("#quest-crystals").innerHTML = round.collected
     .map(
       (done, i) =>
-        `<span class="quest-step ${done ? "collected" : next === i ? "current" : ""}" title="${QUESTS[i].title}" aria-label="${QUESTS[i].title}${done ? ": done" : next === i ? ": current job" : ""}">${icon(done ? "check" : QUESTS[i].icon)}</span>`,
+        `<span class="quest-step ${done ? "collected" : next === i ? "current" : ""}" title="${currentQuests()[i].title}" aria-label="${currentQuests()[i].title}${done ? ": done" : next === i ? ": current job" : ""}">${icon(done ? "check" : currentQuests()[i].icon)}</span>`,
     )
     .join("");
   $("#quest-title").textContent = quest ? quest.title : "Your portal is ready!";
   $("#quest-description").textContent = quest
     ? quest.goal
-    : "The bridge is repaired, the sheep are fed, and the garden is blooming. Step through your portal!";
+    : "Your expedition is complete. Visit your finished projects or step through the portal!";
   $("#quest-supplies").innerHTML = quest
     ? `${icon(round.gathered[next] ? "check" : "cube")} <span>${round.gathered[next] ? `Supplies ready · ${quest.action.toLowerCase()}` : `First: ${quest.gather.toLowerCase()}`}</span>`
     : `${icon("spark")} Five good deeds. One brighter island.`;
@@ -266,7 +284,10 @@ function updateHud() {
     const i = Number(el.dataset.map);
     el.classList.toggle("done", round.collected[i]);
     el.classList.toggle("current", next === i);
-    el.title = QUESTS[i].location;
+    const site = currentQuests()[i];
+    el.title = site.location;
+    el.style.left = `${50 + site.x * 1.55}%`;
+    el.style.top = `${50 + site.z * 1.55}%`;
   });
   $("#block-stock").textContent = world.blockStock;
   $(".map-label").textContent = WORLDS[selected].name.toUpperCase();
@@ -282,7 +303,7 @@ function startGame() {
   world.start(WORLDS[selected].id, round, buildingFor(WORLDS[selected].id));
   updateHud();
   setBuild(false);
-  if (firstSession) {
+  if (firstSession || !round.gathered.some(Boolean)) {
     firstSession = false;
     showIntro();
   } else {
@@ -292,11 +313,13 @@ function startGame() {
 }
 function showIntro() {
   showModal(
-    `<div class="modal-emblem mint">${icon("cube")}</div><div class="eyebrow centered">WELCOME, ISLAND HELPER</div><h2 id="modal-title">Your island needs a little you.</h2><p class="modal-description">A broken bridge. Some hungry sheep. A garden waiting to bloom.<br>Use a little maths to make <strong>five big changes</strong>!</p><div class="intro-steps"><div>${icon("cube")}<b>Gather</b><span>Pick up the supplies</span></div><div>${icon("book")}<b>Work it out</b><span>Count what the island needs</span></div><div>${icon("spark")}<b>Make it happen</b><span>Watch your world change</span></div></div><p class="gentle-note">No timers. Hints whenever you need them. Your completed jobs are saved.</p><button class="primary-button wide" id="begin-explore">Let's help the island! ${icon("arrow")}</button><div class="intro-controls">${matchMedia("(pointer: coarse)").matches ? "Use the arrow pad to move. Drag the world to look around." : "WASD to move · Mouse to look · Space to jump · E to help · G for a guide"}</div>`,
+    `<div class="modal-emblem mint">${icon("cube")}</div><div class="eyebrow centered">WELCOME, ISLAND HELPER</div><h2 id="modal-title">${WORLDS[selected].title}</h2><p class="modal-description">${round.layoutVersion === 2 ? WORLDS[selected].description : "Finish your saved island jobs, then replay for a new expedition."}<br>Use a little maths to make <strong>five big changes</strong>!</p><div class="intro-steps"><div>${icon("cube")}<b>Gather</b><span>Pick up the supplies</span></div><div>${icon("book")}<b>Work it out</b><span>Count what the island needs</span></div><div>${icon("spark")}<b>Make it happen</b><span>Watch your world change</span></div></div><p class="gentle-note">No timers. Hints whenever you need them. Your completed jobs are saved.</p><button class="primary-button wide" id="begin-explore">Let's help the island! ${icon("arrow")}</button><div class="intro-controls">${matchMedia("(pointer: coarse)").matches ? "Use the arrow pad to move. Drag the world to look around." : "WASD to move · Mouse to look · Space to jump · E to help · G for a guide"}</div>`,
   );
   $("#begin-explore").onclick = () => {
     closeModal();
-    toast("Find the timber yard sign, or press G to go straight there.");
+    toast(
+      `Find the ${currentQuests()[activeQuest(round.collected)]?.location.toLowerCase() || "portal"}, or press G for a guide.`,
+    );
   };
 }
 function interactQuest(index) {
@@ -304,7 +327,7 @@ function interactQuest(index) {
   if (phase === "done") return;
   if (phase === "locked") {
     toast(
-      `First, ${QUESTS[activeQuest(round.collected)].title.toLowerCase()}. Press G for a guide.`,
+      `First, ${currentQuests()[activeQuest(round.collected)].title.toLowerCase()}. Press G for a guide.`,
     );
     return;
   }
@@ -315,7 +338,7 @@ function interactQuest(index) {
     updateHud();
     sound("tap");
     toast(
-      `${index === 1 || index === 4 ? "Inspection complete" : "Supplies collected"}! Press E to ${QUESTS[index].action.toLowerCase()}.`,
+      `${index === 1 || index === 4 ? "Inspection complete" : "Supplies collected"}! Press E to ${currentQuests()[index].action.toLowerCase()}.`,
     );
     return;
   }
@@ -324,9 +347,11 @@ function interactQuest(index) {
 function showChallenge(index) {
   if (questPhase(round, index) !== "solve") return;
   activeChallenge = index;
-  attempts = 0;
+  round.evidence ??= [];
+  const evidence = (round.evidence[index] ??= { attempts: 0, hint: false });
+  attempts = evidence.attempts;
   const q = round.questions[index];
-  const quest = describeQuest(index, q);
+  const quest = describeQuest(index, q, WORLDS[selected].id, round);
   showModal(
     `${modalClose("Return to exploring")}<div class="challenge-top"><span class="puzzle-badge">${icon(quest.icon)} ISLAND JOB ${index + 1}</span><span>${round.collected.filter(Boolean).length} / 5 helped</span></div><h2 id="modal-title">${quest.title}</h2><p class="modal-description quest-story">${quest.story}</p><div class="resource-counts"><div>${icon(quest.icon)}<b>${q.a}</b><span>${quest.labels[0]}</span></div><div>${icon(quest.icon)}<b>${q.b}</b><span>${quest.labels[1]}</span></div></div><div class="equation" aria-label="${q.a} ${q.operator === "+" ? "plus" : "minus"} ${q.b} equals what?"><span>${q.a}</span><span class="operator">${q.operator}</span><span>${q.b}</span><span class="operator">=</span><span class="answer-blank">?</span></div><form id="answer-form"><label class="sr-only" for="answer">Your answer</label><input id="answer" name="answer" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="Your answer" autocomplete="off" autofocus required><button type="submit" class="primary-button">Check answer ${icon("arrow")}</button></form><div id="answer-feedback" class="answer-feedback" role="status" aria-live="polite">You've got this. Take your time.</div><button class="hint-button" id="show-hint">${icon("spark")} A little help, please</button><div id="hint-panel" hidden></div>`,
     "challenge",
@@ -338,8 +363,14 @@ function showChallenge(index) {
     submitAnswer();
   };
   $("#show-hint").onclick = () => showHint(q);
+  if (evidence.hint) showHint(q);
 }
 function showHint(q) {
+  const evidence = round.evidence[activeChallenge];
+  if (!evidence.hint) {
+    evidence.hint = true;
+    saveNow();
+  }
   $("#hint-panel").hidden = false;
   const dots = (n, cls = "") =>
     Array.from(
@@ -367,6 +398,7 @@ function submitAnswer() {
   }
   const q = round.questions[activeChallenge];
   attempts++;
+  round.evidence[activeChallenge].attempts = attempts;
   if (Number(raw) !== q.answer) {
     $("#answer-feedback").className = "answer-feedback try-again";
     $("#answer-feedback").textContent =
@@ -374,6 +406,7 @@ function submitAnswer() {
     input.classList.add("retry");
     input.select();
     sound("retry");
+    saveNow();
     if (attempts >= 2) showHint(q);
     return;
   }
@@ -381,7 +414,15 @@ function submitAnswer() {
   if (!finishQuest(round, index, Number(raw))) return;
   save.solved++;
   save.totalCrystals++;
-  if (attempts === 1) save.correctFirst++;
+  if (attempts === 1 && !round.evidence[index].hint) save.correctFirst++;
+  if (round.layoutVersion === 2) {
+    recordPractice(save, round, index);
+    // Adapt only the next unopened job. The current puzzle and gathered supplies
+    // remain fixed, including across closing a dialog or reloading the page.
+    const next = activeQuest(round.collected);
+    if (next >= 0 && preparePractice(save, round, next))
+      world.questWorld.configure(round);
+  }
   world.collect(index);
   saveNow();
   updateHud();
@@ -392,7 +433,7 @@ function submitAnswer() {
   $(".answer-blank").classList.add("solved");
   $("#answer-feedback").className = "answer-feedback success";
   $("#answer-feedback").textContent =
-    `${q.answer} ${QUESTS[index].resource} — you worked it out! You earned a crystal and 3 building blocks.`;
+    `${q.answer} ${currentQuests()[index].resource} — you worked it out! You earned a crystal and 3 building blocks.`;
   $("#show-hint").hidden = true;
   $("#hint-panel").hidden = true;
   $("#modal-title").textContent = "Your maths made a difference!";
@@ -405,8 +446,8 @@ function submitAnswer() {
     closeModal(false);
     $("#game-hud").hidden = true;
     $("#quest-reveal").hidden = false;
-    $("#reveal-title").textContent = QUESTS[index].success;
-    $("#reveal-description").textContent = QUESTS[index].effect;
+    $("#reveal-title").textContent = currentQuests()[index].success;
+    $("#reveal-description").textContent = currentQuests()[index].effect;
     landmarkReveal = false;
     world.showReward(index);
     $("#finish-reveal").focus();
@@ -437,7 +478,7 @@ function goHome() {
 }
 function showHelp() {
   showModal(
-    `${modalClose()}<div class="modal-emblem mint">${icon("book")}</div><h2 id="modal-title">Adventure starts here.</h2><p class="modal-description">Follow the five island jobs in order. Press E to gather or inspect supplies, then E again to work out what the island needs. Your answer repairs the bridge, feeds the sheep, plants flowers, or powers the portal. Each job also earns 3 building blocks!</p><div class="help-grid"><div><kbd>W A S D</kbd><span>Walk around the island</span></div><div><kbd>MOUSE</kbd><span>Look around (or drag)</span></div><div><kbd>SPACE</kbd><span>Jump over blocks</span></div><div><kbd>E</kbd><span>Gather supplies or solve the current job</span></div><div><kbd>G</kbd><span>Go straight to the current island job</span></div><div><kbd>B</kbd><span>Switch building on or off</span></div><div><kbd>1 · 2 · 3</kbd><span>Choose your building block</span></div><div><kbd>RIGHT CLICK</kbd><span>Place a block nearby</span></div><div><kbd>LEFT CLICK</kbd><span>Mine a block you placed</span></div><div><kbd>ESC</kbd><span>Pause and release the mouse</span></div></div><p class="gentle-note">Arrow keys work too. On a touchscreen, use the arrow pad and drag to look. Stuck? the guide button will help.</p><button class="primary-button wide" id="help-done">Got it ${icon("check")}</button>`,
+    `${modalClose()}<div class="modal-emblem mint">${icon("book")}</div><h2 id="modal-title">Adventure starts here.</h2><p class="modal-description">Follow the five island jobs in order. Press E to gather or inspect supplies, then E again to work out what the island needs. Each world has different projects: rescue a balloon, uncover a fossil, send a minecart, or launch a rocket. Each job also earns 3 building blocks!</p><div class="help-grid"><div><kbd>W A S D</kbd><span>Walk around the island</span></div><div><kbd>MOUSE</kbd><span>Look around (or drag)</span></div><div><kbd>SPACE</kbd><span>Jump over blocks</span></div><div><kbd>E</kbd><span>Gather supplies or solve the current job</span></div><div><kbd>G</kbd><span>Go straight to the current island job</span></div><div><kbd>B</kbd><span>Switch building on or off</span></div><div><kbd>1 · 2 · 3</kbd><span>Choose your building block</span></div><div><kbd>RIGHT CLICK</kbd><span>Place a block nearby</span></div><div><kbd>LEFT CLICK</kbd><span>Mine a block you placed</span></div><div><kbd>ESC</kbd><span>Pause and release the mouse</span></div></div><p class="gentle-note">Arrow keys work too. On a touchscreen, use the arrow pad and drag to look. Stuck? the guide button will help.</p><button class="primary-button wide" id="help-done">Got it ${icon("check")}</button>`,
   );
   bindClose(currentScreen === "play");
   $("#help-done").onclick = () => closeModal(currentScreen === "play");
@@ -455,13 +496,20 @@ function showSettings() {
       )
       .join(
         "",
-      )}</div></fieldset><div class="setting-row"><div><b>A little sound</b><small>Gentle notes for discoveries and answers</small></div><label class="toggle"><input type="checkbox" id="settings-sound" aria-label="Enable sound" ${save.sound ? "checked" : ""}><span></span></label></div><div class="progress-summary"><span><b>${save.solved}</b> puzzles solved</span><span><b>${save.completed.length} / 3</b> worlds completed</span></div><p class="privacy-note">Progress stays in this browser. No accounts or tracking.<br>Settings belong to ${escapeHtml(profile.name)}. Builds and materials are saved between visits.</p><button class="primary-button wide" id="save-settings">Save settings ${icon("check")}</button>`,
+      )}</div></fieldset><div class="learning-settings"><b>A steady challenge</b><p>Addition: ${learningLabel(save.learning, "addition", save.range)}<br>Subtraction: ${learningLabel(save.learning, "subtraction", save.range)}</p><small>Three first-try answers without a hint move that skill up one step. If two questions need help, the next ones ease back. Speed never matters.</small><label for="learning-start">Change the starting point</label><select id="learning-start"><option value="keep">Keep learning from my answers</option value="0">Small steps to 10</option><option value="1">Exploring to 20</option><option value="2">Tens and ones to 40</option><option value="4">Bigger numbers to 100</option></select></div><div class="setting-row"><div><b>A little sound</b><small>Gentle notes for discoveries and answers</small></div><label class="toggle"><input type="checkbox" id="settings-sound" aria-label="Enable sound" ${save.sound ? "checked" : ""}><span></span></label></div><div class="progress-summary"><span><b>${save.solved}</b> puzzles solved</span><span><b>${save.completed.length} / ${WORLDS.length}</b> worlds completed</span></div><p class="privacy-note">Progress stays in this browser. No accounts or tracking.<br>Settings belong to ${escapeHtml(profile.name)}. Builds and materials are saved between visits.</p><button class="primary-button wide" id="save-settings">Save settings ${icon("check")}</button>`,
   );
   bindClose(currentScreen === "play");
   $("#save-settings").onclick = () => {
     save.range = Number($("input[name=range]:checked").value);
     save.operation = $("input[name=operation]:checked").value;
     save.sound = $("#settings-sound").checked;
+    if ($("#learning-start").value !== "keep") {
+      const level = Number($("#learning-start").value);
+      save.learning = cleanLearning({
+        addition: { level, streak: 0, support: 0 },
+        subtraction: { level, streak: 0, support: 0 },
+      });
+    }
     saveNow();
     closeModal(currentScreen === "play");
     toast("All set. Your next adventure will use these settings.");
@@ -475,12 +523,12 @@ function complete() {
   saveNow();
   sound("complete");
   showModal(
-    `<div class="completion-stars">${icon("spark")}${icon("trophy")}${icon("spark")}</div><div class="eyebrow centered">ADVENTURE COMPLETE</div><h2 id="modal-title">You brought the magic back.</h2><p class="modal-description">A bridge repaired. Happy sheep. A blooming garden.<br>You made this island a better place.</p><div class="reward-row"><span>${icon("diamond")}<b>5 crystals</b></span><span>${icon("cube")}<b>15 blocks earned</b></span></div><div class="unlocked-world">${cubeArt(WORLDS[Math.min(selected + 1, 2)].id)}<div><small>${selected < 2 ? "YOUR NEXT ADVENTURE IS UNLOCKED" : "YOU’VE EXPLORED EVERY WORLD"}</small><strong>${selected < 2 ? WORLDS[selected + 1].name : "A world of possibilities."}</strong></div>${icon("check")}</div><button class="primary-button wide" id="next-world">${selected < 2 ? "Explore the next world" : "Back to your islands"} ${icon("arrow")}</button><button class="text-button" id="stay-build">Stay here and build a little more</button>`,
+    `<div class="completion-stars">${icon("spark")}${icon("trophy")}${icon("spark")}</div><div class="eyebrow centered">ADVENTURE COMPLETE</div><h2 id="modal-title">You brought the magic back.</h2><p class="modal-description">${round.layoutVersion === 2 ? WORLDS[selected].description : "Five good deeds. One brighter island."}<br>You made it all happen!</p><div class="reward-row"><span>${icon("diamond")}<b>5 crystals</b></span><span>${icon("cube")}<b>15 blocks earned</b></span></div><div class="unlocked-world">${cubeArt(WORLDS[Math.min(selected + 1, WORLDS.length - 1)].id)}<div><small>${selected < WORLDS.length - 1 ? "YOUR NEXT ADVENTURE IS UNLOCKED" : "YOU’VE EXPLORED EVERY WORLD"}</small><strong>${selected < WORLDS.length - 1 ? WORLDS[selected + 1].name : "A world of possibilities."}</strong></div>${icon("check")}</div><button class="primary-button wide" id="next-world">${selected < WORLDS.length - 1 ? "Explore the next world" : "Back to your islands"} ${icon("arrow")}</button><button class="text-button" id="stay-build">Stay here and build a little more</button>`,
     "complete",
   );
   $("#next-world").onclick = () => {
     closeModal(false);
-    if (selected < 2) {
+    if (selected < WORLDS.length - 1) {
       selected++;
       startGame();
     } else goHome();
@@ -524,10 +572,10 @@ function updatePosition({ x, z, yaw, nearby, portal, landmark }) {
     ? "Step into the portal"
     : nearby >= 0
       ? questPhase(round, nearby) === "locked"
-        ? `Help with ${QUESTS[activeQuest(round.collected)].location.toLowerCase()} first`
+        ? `Help with ${currentQuests()[activeQuest(round.collected)].location.toLowerCase()} first`
         : questPhase(round, nearby) === "gather"
-          ? QUESTS[nearby].gather
-          : QUESTS[nearby].action
+          ? currentQuests()[nearby].gather
+          : currentQuests()[nearby].action
       : "Explore the island";
 }
 
@@ -548,6 +596,7 @@ function buildingFor(id) {
 }
 function previewWorld() {
   if (!world) return;
+  $(".hero-description").textContent = WORLDS[selected].description;
   world.questRound = null;
   world.collected = Array(5).fill(false);
   world.loadTheme(WORLDS[selected].id);

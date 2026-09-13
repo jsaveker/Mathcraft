@@ -1,8 +1,8 @@
-import { DEFAULT_SAVE, readSave } from "./maths.js";
+import { DEFAULT_SAVE, readSave, WORLDS } from "./maths.js";
 
 export const FAMILY_KEY = "mathcraft-family-v2";
 export const AVATARS = ["fox", "astronaut", "dragon", "panda"];
-export const BUILD_WORLDS = ["village", "meadow", "cavern", "sunset"];
+export const BUILD_WORLDS = ["village", ...WORLDS.map((w) => w.id)];
 export const MAX_BLOCKS = 600;
 const integer = (n, fallback, max = 100000) =>
   Number.isInteger(n) && n >= 0 && n <= max ? n : fallback;
@@ -60,7 +60,7 @@ function validateProfile(p) {
   clean.discoveries = [
     ...new Set(
       (Array.isArray(p.discoveries) ? p.discoveries : []).filter((x) =>
-        ["meadow", "cavern", "sunset"].includes(x),
+        WORLDS.map((w) => w.id).includes(x),
       ),
     ),
   ];
@@ -132,7 +132,7 @@ export function recordBuilding(profile, worldId, blocks, inventory) {
 
 export function claimDiscovery(profile, worldId) {
   if (
-    !["meadow", "cavern", "sunset"].includes(worldId) ||
+    !WORLDS.map((w) => w.id).includes(worldId) ||
     profile.discoveries.includes(worldId)
   )
     return false;

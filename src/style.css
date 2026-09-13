@@ -2878,3 +2878,97 @@ dialog h2 {
     bottom: 155px;
   }
 }
+
+/* Five expeditions remain reachable without squeezing the world names. */
+.worlds-section {
+  width: min(1120px, 88.6%);
+}
+.world-cards {
+  grid-template-columns: repeat(5, minmax(175px, 1fr));
+  overflow-x: auto;
+  padding: 5px 2px 12px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: #83ac9c transparent;
+}
+.world-card {
+  scroll-snap-align: start;
+  gap: 6px;
+}
+.world-card .island-icon {
+  width: 48px;
+  min-width: 48px;
+}
+.world-card-info > strong {
+  font-size: 14px;
+  white-space: normal;
+}
+.island-icon.sky {
+  --grass: #c3e1e2;
+  --soil: #95b8ba;
+  --side: #789ca9;
+}
+.island-icon.moon {
+  --grass: #abb8ce;
+  --soil: #8c9bb3;
+  --side: #718198;
+}
+.learning-settings {
+  padding: 15px;
+  background: #edf5ee;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  text-align: left;
+}
+.learning-settings p {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 7px 0;
+}
+.learning-settings small {
+  display: block;
+  color: #5c756a;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.learning-settings label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 12px 0 7px;
+}
+.learning-settings select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #b8d0c0;
+  border-radius: 8px;
+  background: #fff;
+  color: #304a3c;
+  font: inherit;
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .worlds-section {
+    width: 86%;
+  }
+  .world-cards {
+    grid-template-columns: repeat(5, minmax(142px, 1fr));
+  }
+  .world-card {
+    flex-direction: row;
+    text-align: left;
+    padding: 10px 7px;
+    min-height: 91px;
+  }
+  .world-card .island-icon {
+    width: 40px;
+    min-width: 40px;
+  }
+  .world-card-info > strong {
+    font-size: 12px;
+  }
+  .section-heading {
+    gap: 10px;
+    justify-content: space-between;
+  }
+}

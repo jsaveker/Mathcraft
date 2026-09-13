@@ -1,6 +1,6 @@
 # Mathcraft — Number Islands
 
-A playable, original voxel adventure for practising addition and subtraction. Explore a floating island and help with five physical jobs: gather timber, repair the river bridge, feed the sheep, plant a flower garden, and power the ancient portal. Correct answers visibly change the world and earn materials for a permanent home village. Each explorer has separate progress, builds, settings, and a blocky avatar.
+A playable, original voxel adventure for practising addition and subtraction. Explore five floating worlds with 25 different projects, from a farm rescue to a rocket launch. Correct answers visibly change the world and earn materials for a permanent home village. Each explorer has separate progress, builds, settings, and a blocky avatar.
 
 ## Run locally
 
@@ -44,24 +44,37 @@ The island edge prevents falling. Scenery is preserved; players can mine their o
 
 ## Maths and progress
 
-- Starts with mixed addition and subtraction up to **100**, as requested.
+- The parent limit defaults to **100**, as requested. New explorers start with manageable numbers up to 20; addition and subtraction progress separately through six difficulty steps.
 - Parent settings offer ranges of 10, 20, or 100 and addition, subtraction, or a mixture.
+- Three first-try answers without hints advance the practised skill one step. Two questions needing help ease it back one step. Answering speed is never measured. Parent settings show each skill and offer a starting-point override.
 - Both operands and results stay within the selected range. Subtraction never produces negative answers.
 - Hints explain counting on/back and splitting tens and ones, with dots grouped into rows of ten.
 - Mistakes invite another try; two missed answers reveal the hint automatically. There are no timers or lost lives.
 - Five jobs per adventure, with fresh puzzles for replay. Press E once to gather or inspect supplies, then E again to solve the contextual question. Each success includes a close-up of what changed. The bridge gains a solid walkable deck, the sheep receive apples, flowers grow from the counted seeds, and the portal powers up.
-- The planks counted in the timber job are exactly the planks already laid in the bridge job. Supplies stay positive where physical items are required; a fully charged portal can still have a zero-answer question.
+- Meadow’s first two jobs share the same planks, with only a small extra quantity to calculate. The next unopened job adapts after an answer; inspected questions, attempts and hint use stay fixed across closing a dialog or reloading. New expedition results stay positive; legacy zero-answer questions are retained.
 - Jobs unlock in order. Gathered supplies and completed world changes survive reloads. Existing saved crystals and unlocked worlds are preserved and mapped to completed jobs.
-- Three unlockable island themes: Meadow Isles, Crystal Peaks, and Sunset Sands.
+- Five unlockable expeditions, with distinct routes and animated machinery. Children who completed the original three already have Cloud Harbour unlocked. An unfinished older round retains its original five jobs and exact questions; its next replay uses the new expedition.
 - Up to six named explorers can choose a fox, astronaut, dragon, or panda avatar. Each has separate settings, puzzles, world unlocks, discoveries, inventory, and building layouts. Everything is saved in this browser’s local storage after each change; it does not sync between devices.
 - Changing number settings takes effect on the next adventure, preserving an in-progress session until it ends or is restarted.
 - No accounts or remote game services are needed. Fonts and graphics are bundled or generated locally. Clearing browser site data removes profiles and progress.
+
+## Five different expeditions
+
+| World         | Five projects                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Meadow Isles  | Gather timber, finish a walkable bridge, feed the flock, plant a garden, power the portal                                 |
+| Crystal Peaks | Melt an ice barrier, load a moving minecart, raise the summit lift, turn light prisms, light rescue beacons               |
+| Sunset Sands  | Uncover a dinosaur fossil, pump a reservoir, restore a sun mosaic, lift a counterweighted treasure door, send a sand ship |
+| Cloud Harbour | Start wind turbines, release a balloon, deliver post by glider, ring sky chimes, launch an airship                        |
+| Moonbase Nova | Unfold solar panels, deploy a six-wheeled rover, inflate a habitat, transmit through a space antenna, launch a rocket     |
+
+The controls and addition/subtraction puzzles stay familiar. Each project changes its own machinery, and each world has its own scenery: snowy peaks, desert ruins, suspended sky docks, or a crater and Earth above a moon base. Complete all five jobs to activate the onward portal. The rocket reveal camera follows its ascent.
 
 ## Your village and discoveries
 
 Use **My village** on the welcome screen or **V** during an adventure. Each explorer owns a green island with open building plots, an entrance arch, and a fountain. Place blocks freely, stack them into structures, and mine your own blocks to recover materials. Builds on the adventure islands also stay saved when travelling or starting another puzzle round.
 
-Use **Discover / L**, then **E**, to visit each island’s landmark:
+The first three islands also have optional landmarks. Use **Discover / L**, then **E**:
 
 - **Meadow Isles:** a waterwheel and walkable lookout with an aqueduct spilling a waterfall over the island edge. Open the sluice to set the wheel turning.
 - **Crystal Peaks:** a glowing cavern, stepped mountain ridge, snow-capped peaks, stars, and animated northern lights. Play the mint–violet–gold crystal sequence to awaken the aurora.
@@ -76,7 +89,10 @@ The first explorer inherits the original game’s maths progress and unlocks. Th
 [Three.js WebGLRenderer](https://threejs.org/docs/pages/WebGLRenderer.html) renders the world. Instanced blocks reduce draw calls. Terrain, textures, trees, structures, clouds, animals, portal effects, and audio are generated in code. The UI uses HTML/CSS and native dialogs. Vite builds the application. Fonts are Outfit and DM Sans, distributed through Fontsource under the SIL Open Font License; their licence files are included in the dependencies.
 
 - `src/world.js`: scene, terrain, input, movement, collisions, building, particles, and portal.
-- `src/maths.js`: puzzle generation, save validation, persistence, and hints.
+- `src/maths.js`: world catalogue, rounds, save validation, persistence, and hints.
+- `src/learning.js`: bounded skill progression, question bands, and persistent answer evidence.
+- `src/adventures.js`: world-specific routes, objectives and question stories.
+- `src/adventure-world.js`: twenty animated projects, protected machinery footprints and reveal cameras.
 - `src/quests.js`: contextual maths, job phases, and linked bridge quantities.
 - `src/quest-world.js`: physical supplies, bridge floor/collision, sheep feeding, planting, and success animations.
 - `src/main.js`: profiles, menus, quests, discoveries, progression, accessibility labels, and sound.
@@ -93,9 +109,9 @@ npm run build
 npm run format:check
 ```
 
-The 56 automated tests cover profile isolation, inventory conservation, saved build placement/restoration/mining, legacy migration, stale-tab conflicts, one-time discovery rewards, landmark surfaces, and 9,000 generated questions, linked quest quantities across every range and operation, job ordering, duplicate reward prevention, legacy saves, saved supplies, bridge floor/collision, boundary answers, settings, replay, walking, turning, diagonal speed, gravity, jumping, island boundaries, pausing, and touch movement inputs.
+The 77 automated tests cover adaptive number bands and carrying/borrowing, skill progression and support, inspected-question stability, all 20 new animated models and their paused/restored states, five-world routes and saves, plus profile isolation, inventory conservation, saved build placement/restoration/mining, legacy migration, stale-tab conflicts, one-time discovery rewards, landmark surfaces, and 9,000 generated questions, linked quest quantities across every range and operation, job ordering, duplicate reward prevention, legacy saves, saved supplies, bridge floor/collision, boundary answers, settings, replay, walking, turning, diagonal speed, gravity, jumping, island boundaries, pausing, and touch movement inputs.
 
-Browser checks are performed in the Codex embedded browser at desktop and phone-size viewports. The current update was checked through all three islands, all three landmarks, two separate explorer profiles, and saved village building:
+Browser checks are performed in the Codex embedded browser at desktop and phone-size viewports. Previous releases were checked through the original three islands, all three landmarks, two separate explorer profiles, and saved village building:
 
 - Completed all 15 puzzles across the three worlds and entered every portal.
 - Confirmed incorrect-answer feedback and visual hints.
@@ -110,6 +126,8 @@ Browser checks are performed in the Codex embedded browser at desktop and phone-
 - Switched between two explorers with separate builds and number ranges.
 - Completed the crystal melody (including a wrong note) and aligned the sun rings.
 - Revisited a landmark without receiving duplicate materials, then reloaded and verified its reward in the village.
+
+For the five-expedition release, browser QA completed all 25 jobs and onward portals, checked desktop (1280 × 720) and phone (390 × 844) layouts, confirmed the new world unlocks on an existing profile, exercised an incorrect answer and hints, changed the learning starting point, and reloaded an inspected question with its hint intact. The airship and rocket reveal cameras were checked after framing fixes. The browser console had no errors or warnings.
 
 Physical touchscreen use and native browser pointer lock still need testing on the children's target devices. Browser automation here exercised the drag-to-look fallback; automated movement tests cover held keyboard and touch inputs.
 

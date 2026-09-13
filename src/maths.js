@@ -1,3 +1,9 @@
+import {
+  newLearning,
+  cleanLearning,
+  practiceQuestion,
+  practiceLimit,
+} from "./learning.js";
 export const WORLDS = [
   {
     id: "meadow",
@@ -19,7 +25,8 @@ export const WORLDS = [
     color: "#8377c8",
     crystals: "#c5a0ff",
     title: "Light up the crystal peaks",
-    description: "Collect five glowing crystals to power the mountain portal.",
+    description:
+      "Open an icy mine, send the crystal express, and guide climbers home.",
     operation: "mixed",
   },
   {
@@ -30,7 +37,32 @@ export const WORLDS = [
     color: "#d48b47",
     crystals: "#ffd475",
     title: "Unlock the sun gate",
-    description: "Find five sun crystals and awaken the golden gate.",
+    description:
+      "Uncover a dinosaur fossil, restore a sun mosaic, and launch a sand ship.",
+    operation: "mixed",
+  },
+  {
+    id: "sky",
+    name: "Cloud Harbour",
+    tag: "The sky is only the beginning.",
+    biome: "THE SKY DOCKS",
+    color: "#5caac3",
+    crystals: "#8cffe9",
+    title: "Get the harbour flying",
+    description:
+      "Rescue a balloon, deliver cloud post, and launch a giant airship.",
+    operation: "mixed",
+  },
+  {
+    id: "moon",
+    name: "Moonbase Nova",
+    tag: "One small sum. One giant adventure.",
+    biome: "THE LUNAR FRONTIER",
+    color: "#7986bf",
+    crystals: "#98cfff",
+    title: "Build a home among the stars",
+    description:
+      "Unfold solar panels, send a rover, and launch your very own rocket.",
     operation: "mixed",
   },
 ];
@@ -39,6 +71,7 @@ export const DEFAULT_SAVE = {
   range: 100,
   operation: "mixed",
   sound: true,
+  learning: newLearning(),
   completed: [],
   solved: 0,
   correctFirst: 0,
@@ -56,6 +89,7 @@ export function readSave(storage = globalThis.localStorage) {
         ? value.operation
         : "mixed",
       sound: value.sound !== false,
+      learning: cleanLearning(value.learning),
       completed: Array.isArray(value.completed)
         ? [
             ...new Set(
@@ -140,30 +174,45 @@ export function createRound(save, worldId, random = Math.random) {
     prior.gathered = prior.collected.map(
       (done, i) => done || prior.gathered?.[i] === true,
     );
+    prior.worldId = worldId;
+    prior.evidence = prior.questions.map((_, i) => {
+      const e = prior.evidence?.[i];
+      return {
+        attempts:
+          Number.isInteger(e?.attempts) && e.attempts >= 0
+            ? Math.min(e.attempts, 100000)
+            : 0,
+        hint: e?.hint === true,
+        recorded: e?.recorded === true,
+      };
+    });
     return prior;
   }
-  const questions = Array.from({ length: 5 }, (_, i) => {
-    const q = makeQuestion(
-      i === 0 ? save.range - 1 : save.range,
-      save.operation,
-      random,
-      i,
+  const questions = Array.from({ length: 5 }, (_, i) =>
+    practiceQuestion(save.range, save.operation, save.learning, random, i),
+  );
+  if (worldId === "meadow") {
+    // The second job uses exactly the planks counted in the first. Keep the
+    // extra step small, so this physical dependency cannot create a difficulty jump.
+    const linkedCap = Math.min(
+      save.range,
+      practiceLimit(questions[0].level ?? 1, save.range),
     );
-    // Physical supplies stay positive; the portal can still teach a zero result.
-    if (i < 4 && q.answer === 0) {
-      q.b -= 1;
-      q.answer = 1;
+    const stock = Math.min(linkedCap - 1, questions[0].answer);
+    if (questions[0].answer !== stock) {
+      questions[0].a -= 1;
+      questions[0].answer = stock;
     }
-    return q;
-  });
-  // The timber counted in job 1 is exactly what is already laid in job 2.
-  const stock = questions[0].answer;
-  const extra = 1 + Math.floor(random() * (save.range - stock));
-  questions[1] =
-    questions[1].operator === "+"
-      ? { a: stock, b: extra, operator: "+", answer: stock + extra }
-      : { a: stock + extra, b: stock, operator: "−", answer: extra };
+    const extra = 1 + Math.floor(random() * Math.min(5, linkedCap - stock));
+    questions[1] =
+      questions[1].operator === "+"
+        ? { a: stock, b: extra, operator: "+", answer: stock + extra }
+        : { a: stock + extra, b: stock, operator: "−", answer: extra };
+  }
   const round = {
+    worldId,
+    layoutVersion: 2,
+    evidence: [],
     range: save.range,
     operation: save.operation,
     questions,

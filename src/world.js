@@ -1,10 +1,31 @@
 import * as THREE from "three";
-import { QUESTS } from "./quests.js";
+import { QUESTS, questsFor } from "./quests.js";
 import { QuestWorld } from "./quest-world.js";
+import { AdventureWorld } from "./adventure-world.js";
 import { BiomeWorld, terrainLevel } from "./biomes.js";
 import { MAX_BLOCKS } from "./profiles.js";
 
 const THEMES = {
+  sky: {
+    sky: 0xa5d6ec,
+    fog: 0xddeffa,
+    grass: [0xb6cecb, 0xc5d8d1, 0xd6e4d8, 0xa6c5c0],
+    leaves: [0x79b5a3, 0x76bbae, 0x93c9b8, 0xd2b877],
+    stone: 0x879fab,
+    soil: 0x9cafa8,
+    water: 0x79d7ee,
+    glow: 0x94ffe5,
+  },
+  moon: {
+    sky: 0x070e27,
+    fog: 0x1b2846,
+    grass: [0x949fb1, 0xa8b0c2, 0x7e899e, 0xb5bccb],
+    leaves: [0x7486a8, 0x8b9cbd, 0xabc3ce, 0x96add1],
+    stone: 0x646f85,
+    soil: 0x727d92,
+    water: 0x79bcf4,
+    glow: 0x9bdfff,
+  },
   meadow: {
     sky: 0xc1e1e9,
     fog: 0xd1e7e9,
@@ -178,6 +199,9 @@ export class IslandWorld {
     this.isVillage = id === "village";
     this.sheep = [];
     this.themeId = id;
+    this.quests = questsFor(id, this.questRound);
+    this.questSites = this.quests.map(({ x, z }) => ({ x, z }));
+    this.farmQuests = this.quests === QUESTS;
     this.theme = THEMES[id === "village" ? "meadow" : id];
     this.scene.background = new THREE.Color(this.theme.sky);
     this.scene.fog = new THREE.Fog(this.theme.fog, 78, 180);
@@ -250,7 +274,13 @@ export class IslandWorld {
           (Math.abs(x - Math.sin(z * 0.21) * 3) < 1.7 && z > -11) ||
           (Math.abs(z - 5) < 1.3 && Math.abs(x) < 12) ||
           (Math.abs(z + 8) < 1.4 && Math.abs(x) < 10);
-        const stream = id !== "village" && x > 12 && x < 16 && z > 0 && z < 20;
+        const stream =
+          this.farmQuests &&
+          id !== "village" &&
+          x > 12 &&
+          x < 16 &&
+          z > 0 &&
+          z < 20;
         this.addBatch(
           stream
             ? "rock"
@@ -273,7 +303,13 @@ export class IslandWorld {
             z,
           );
         if (stream) this.addBatch("water", x, y + 0.55, z, 1, 0.12, 1);
-        if (!path && !stream && edge < 19 && hash(x * 5, z * 7) > 0.93) {
+        if (
+          id === "meadow" &&
+          !path &&
+          !stream &&
+          edge < 19 &&
+          hash(x * 5, z * 7) > 0.93
+        ) {
           this.addBatch("leaf1", x, y + 0.62, z, 0.08, 0.25, 0.08);
           this.addBatch(
             hash(x, z) > 0.5 ? "flower" : "coral",
@@ -313,7 +349,7 @@ export class IslandWorld {
         id === "meadow"
           ? !(x === -15 && z === 11)
           : id === "cavern"
-            ? x > -9
+            ? x > 14
             : false,
       )
       .forEach(([x, z, c], i) => this.tree(x, z, 3 + (i % 3), c));
@@ -346,10 +382,12 @@ export class IslandWorld {
       this.colliders.push({ x: -6, z: 1.5, w: 5, d: 4 });
     }
     this.makePortal();
-    SHRINES.forEach((p, i) => this.makeShrine(p, i));
-    this.makeSheep(5, 0, -1.2);
-    this.makeSheep(7, -0.2, -1.4);
-    this.makeSheep(9, 0.5, -1.7);
+    this.questSites.forEach((p, i) => this.makeShrine(p, i));
+    if (this.farmQuests) {
+      this.makeSheep(5, 0, -1.2);
+      this.makeSheep(7, -0.2, -1.4);
+      this.makeSheep(9, 0.5, -1.7);
+    }
     // Stepped, distant islands create a miniature world all the way to the horizon.
     [
       [-40, -12, 3, 7],
@@ -369,39 +407,44 @@ export class IslandWorld {
           for (let j = 1; j < depth; j++)
             this.addBatch(j < 2 ? "soil" : "rock", cx + x, cy - j, cz + z);
         }
-      this.tree(cx, cz, 3 + (i % 2), i % 3, cy + 0.5);
+      if (id !== "moon" && id !== "sky")
+        this.tree(cx, cz, 3 + (i % 2), i % 3, cy + 0.5);
     });
-    // Waterfalls spill into the clouds, with layered translucent voxel streams.
-    [
-      [13.5, 19, 1],
-      [-19, -5, 0],
-      [34, -26, 7],
-    ].forEach(([x, z, y]) => {
-      for (let i = 0; i < 3; i++)
-        this.addBatch(
-          "water",
-          x + i * 0.45,
-          y - 7 - i * 0.3,
-          z,
-          0.62,
-          15 + i,
-          1,
-        );
-      for (let i = 0; i < 6; i++)
-        this.addBatch(
-          "white",
-          x + hash(i, 2) * 2,
-          y - 14 - hash(i, 7) * 3,
-          z + hash(i, 9),
-          0.5,
-          0.15,
-          0.5,
-        );
-    });
+    if (id !== "moon") {
+      // Waterfalls spill into the clouds, with layered translucent voxel streams.
+      [
+        [13.5, 19, 1],
+        [-19, -5, 0],
+        [34, -26, 7],
+      ].forEach(([x, z, y]) => {
+        for (let i = 0; i < 3; i++)
+          this.addBatch(
+            "water",
+            x + i * 0.45,
+            y - 7 - i * 0.3,
+            z,
+            0.62,
+            15 + i,
+            1,
+          );
+        for (let i = 0; i < 6; i++)
+          this.addBatch(
+            "white",
+            x + hash(i, 2) * 2,
+            y - 14 - hash(i, 7) * 3,
+            z + hash(i, 9),
+            0.5,
+            0.15,
+            0.5,
+          );
+      });
+    }
     this.flushBatches();
-    this.makeClouds();
+    if (id !== "moon") this.makeClouds();
     this.makeFireflies();
-    this.questWorld = new QuestWorld(this);
+    this.questWorld = this.farmQuests
+      ? new QuestWorld(this)
+      : new AdventureWorld(this);
     this.updateCollected(this.collected);
     this.renderer.shadowMap.needsUpdate = true;
   }
@@ -546,7 +589,7 @@ export class IslandWorld {
     ctx.font = "bold 30px Trebuchet MS";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(`${index + 1} · ${QUESTS[index].location}`, 256, 58, 478);
+    ctx.fillText(`${index + 1} · ${this.quests[index].location}`, 256, 58, 478);
     const map = new THREE.CanvasTexture(c);
     map.colorSpace = THREE.SRGBColorSpace;
     const label = new THREE.Sprite(
@@ -820,7 +863,8 @@ export class IslandWorld {
       this.guide();
       return;
     }
-    this.biome?.guide();
+    if (!this.biome?.site) return;
+    this.biome.guide();
     this.callbacks.tip?.(`${this.biome.site.title}. Press E to explore!`);
   }
   jump() {
@@ -874,7 +918,7 @@ export class IslandWorld {
       return;
     }
     const index = this.collected.findIndex((x) => !x);
-    const p = index < 0 ? PORTAL : SHRINES[index];
+    const p = index < 0 ? PORTAL : this.questSites[index];
     this.player.set(p.x, this.heightAt(p.x, p.z + 3) + 1.7, p.z + 3);
     this.lookYaw = 0;
     this.lookPitch = -0.1;
@@ -882,7 +926,7 @@ export class IslandWorld {
     this.callbacks.tip?.(
       index < 0
         ? "The portal is ready. Press E to step through!"
-        : `You found the ${QUESTS[index].location.toLowerCase()}. Press E to help!`,
+        : `You found the ${this.quests[index].location.toLowerCase()}. Press E to help!`,
     );
   }
   updateCollected(collected) {
@@ -912,7 +956,7 @@ export class IslandWorld {
     this.collected[index] = true;
     this.updateCollected(this.collected);
     this.blockStock += 3;
-    const s = SHRINES[index];
+    const s = (this.questSites || SHRINES)[index];
     this.burst(new THREE.Vector3(s.x, this.heightAt(s.x, s.z) + 2, s.z), 35);
     this.callbacks.stock?.(this.blockStock);
     this.changedBuilding();
@@ -990,7 +1034,9 @@ export class IslandWorld {
       this.biome?.protected(p.x, p.z) ||
       this.questWorld?.isProtected(p.x, p.z) ||
       (!this.isVillage &&
-        (SHRINES.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < 2.2) ||
+        ((this.questSites || SHRINES).some(
+          (s) => Math.hypot(p.x - s.x, p.z - s.z) < 2.2,
+        ) ||
           Math.hypot(p.x - PORTAL.x, p.z - PORTAL.z) < 3.5))
     ) {
       this.callbacks.tip?.(
