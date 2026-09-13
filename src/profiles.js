@@ -1,4 +1,9 @@
 import {
+  CREATIVE_WORLDS,
+  CREATIVE_RADIUS,
+  isCreativeWorld,
+} from "./creative-worlds.js";
+import {
   BLOCKS,
   CREATIVE_LIMIT,
   CREATIVE_HEIGHT,
@@ -8,7 +13,10 @@ import { DEFAULT_SAVE, readSave, WORLDS } from "./maths.js";
 
 export const FAMILY_KEY = "mathcraft-family-v2";
 export const AVATARS = ["fox", "astronaut", "dragon", "panda"];
-export const BUILD_WORLDS = ["village", ...WORLDS.map((w) => w.id)];
+export const BUILD_WORLDS = [
+  ...CREATIVE_WORLDS.map((w) => w.id),
+  ...WORLDS.map((w) => w.id),
+];
 export const MAX_BLOCKS = 600;
 const integer = (n, fallback, max = 100000) =>
   Number.isInteger(n) && n >= 0 && n <= max ? n : fallback;
@@ -18,7 +26,7 @@ export const profileName = (name) =>
     .slice(0, 20) || "Explorer";
 
 export function validateBlocks(blocks, worldId = "meadow") {
-  const creative = worldId === "village";
+  const creative = isCreativeWorld(worldId);
   const seen = new Set();
   return (Array.isArray(blocks) ? blocks : [])
     .filter((b) => {
@@ -26,8 +34,8 @@ export function validateBlocks(blocks, worldId = "meadow") {
         !b ||
         !Number.isInteger(b.x) ||
         !Number.isInteger(b.z) ||
-        Math.abs(b.x) > 45 ||
-        Math.abs(b.z) > 45 ||
+        Math.abs(b.x) > (creative ? CREATIVE_RADIUS : 45) ||
+        Math.abs(b.z) > (creative ? CREATIVE_RADIUS : 45) ||
         !Number.isFinite(b.y) ||
         b.y < -2 ||
         b.y > (creative ? CREATIVE_HEIGHT : 30) ||
@@ -56,6 +64,7 @@ export function newProfile(
     progress: structuredClone(DEFAULT_SAVE),
     inventory: 36,
     hotbar: cleanHotbar(),
+    creativeWorld: "village",
     builds: {},
     discoveries: [],
   };
@@ -65,6 +74,9 @@ function validateProfile(p) {
   clean.progress = readSave({ getItem: () => JSON.stringify(p.progress) });
   clean.inventory = integer(p.inventory, 36);
   clean.hotbar = cleanHotbar(p.hotbar);
+  clean.creativeWorld = isCreativeWorld(p.creativeWorld)
+    ? p.creativeWorld
+    : "village";
   clean.builds = Object.fromEntries(
     BUILD_WORLDS.map((id) => [id, validateBlocks(p.builds?.[id], id)]),
   );

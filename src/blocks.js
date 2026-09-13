@@ -47,7 +47,7 @@ export const BLOCKS = [
 export const TNT = 35;
 export const CREATIVE_LIMIT = 8000;
 export const CREATIVE_HEIGHT = 80;
-export const CREATIVE_RADIUS = 36;
+export { CREATIVE_RADIUS } from "./creative-worlds.js";
 export const DEFAULT_HOTBAR = [0, 1, 3, 5, 7, 9, 26, 32, TNT];
 export function cleanHotbar(value) {
   return DEFAULT_HOTBAR.map((fallback, i) =>

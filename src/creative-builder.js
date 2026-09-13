@@ -129,7 +129,7 @@ export class CreativeBuilder {
     const added = cells.filter((b) => !w.blocks.has(blockKey(b)));
     if (w.blocks.size + added.length > CREATIVE_LIMIT) {
       w.callbacks.tip?.(
-        "Your village has room for 8,000 blocks. Mine or undo something to make space.",
+        "This world has room for 8,000 blocks. Mine or undo something to make space.",
       );
       return;
     }
@@ -191,9 +191,7 @@ export class CreativeBuilder {
     }
     const edit = this.undoStack.pop();
     if (!edit) {
-      this.world.callbacks.tip?.(
-        "Nothing to undo from this village visit yet.",
-      );
+      this.world.callbacks.tip?.("Nothing to undo from this world visit yet.");
       return;
     }
     edit.added.forEach((b) => this.world.voxels.remove(blockKey(b)));

@@ -132,11 +132,20 @@ export class BiomeWorld {
       this.box("white", x + 2, y + 1.3, z, 4, 2, 4);
     }
   }
-  moon() {
-    this.sign("Moonbase Nova · a giant leap", -12, 3.6, 7, 4.8);
+  moon(wide = false) {
+    this.sign(
+      wide
+        ? "Moon Frontier · your space to create"
+        : "Moonbase Nova · a giant leap",
+      -12,
+      3.6,
+      7,
+      4.8,
+    );
     // A recognisable Earth and star field replace the atmosphere and waterfalls.
     const earth = new THREE.Group();
-    earth.position.set(-28, 27, -50);
+    earth.position.set(...(wide ? [-100, 85, -182] : [-28, 27, -50]));
+    if (wide) earth.scale.setScalar(3);
     this.root.add(earth);
     const mapCanvas = document.createElement("canvas");
     mapCanvas.width = 512;
@@ -231,7 +240,7 @@ export class BiomeWorld {
       stars = [];
     for (let i = 0; i < 280; i++) {
       const a = i * 2.39996,
-        r = 80 + (i % 9) * 4;
+        r = (wide ? 250 : 80) + (i % 9) * 4;
       stars.push(Math.cos(a) * r, 14 + (i % 43) * 1.7, Math.sin(a) * r);
     }
     starGeo.setAttribute(

@@ -1,3 +1,9 @@
+import {
+  CREATIVE_WORLDS,
+  CREATIVE_RADIUS,
+  creativeWorld,
+  creativeSites,
+} from "./creative-worlds.js";
 import "@fontsource-variable/outfit/index.css";
 import "@fontsource-variable/dm-sans/wght.css";
 import "./style.css";
@@ -184,8 +190,8 @@ document.querySelector("#app").innerHTML = `
  </main>
  <section id="game-hud" hidden aria-label="Game controls and progress">
    <div class="hud-top"><button id="pause" class="hud-brand" aria-label="Pause game">${icon("cube")} <b>mathcraft.</b><span>Ⅱ</span></button><div class="compass"><span>W</span><span>·</span><b id="heading">N</b><span>·</span><span>E</span></div><div class="hud-totals">${icon("diamond")} <b id="round-crystals">0 / 5</b><button id="sound-game" class="icon-button" aria-label="Mute sound">${icon("sound")}</button></div></div>
-   <div class="quest-panel"><div class="eyebrow">${icon("flag")} <span id="quest-eyebrow">ISLAND HELPERS</span></div><h2 id="quest-title">Gather bridge planks</h2><p id="quest-description">The builders need a hand.</p><div id="quest-crystals" class="quest-crystals"></div><div id="quest-supplies" class="quest-supplies"></div><button id="guide">${icon("compass")} G · Take me to the next crystal ${icon("arrow")}</button></div>
-   <div class="minimap" aria-label="Island map"><span class="map-label">MEADOW ISLES</span><div class="map-land"></div><span class="map-portal">▣</span>${SHRINES.map((p, i) => `<span class="map-crystal" data-map="${i}" style="left:${50 + p.x * 1.55}%;top:${50 + p.z * 1.55}%">${i + 1}</span>`).join("")}<span id="map-player">▲</span><span class="map-north">N</span></div>
+   <div class="quest-panel"><div class="eyebrow">${icon("flag")} <span id="quest-eyebrow">ISLAND HELPERS</span></div><h2 id="quest-title">Gather bridge planks</h2><p id="quest-description">The builders need a hand.</p><div id="quest-crystals" class="quest-crystals"></div><div id="quest-supplies" class="quest-supplies"></div><button id="guide">${icon("compass")} G · Take me to the next crystal ${icon("arrow")}</button><button id="change-build-worlds" hidden>Change world <kbd>M</kbd></button></div>
+   <div class="minimap" aria-label="Island map"><span class="map-label">MEADOW ISLES</span><div class="map-land"></div><span class="map-portal">▣</span>${SHRINES.map((p, i) => `<span class="map-crystal" data-map="${i}" style="left:${50 + p.x * 1.55}%;top:${50 + p.z * 1.55}%">${i + 1}</span>`).join("")}<span id="map-player">▲</span><span class="map-north">N</span><span id="map-coordinates" hidden></span></div>
    <div id="crosshair" aria-hidden="true">+</div>
    <button id="interaction" class="interact-prompt" hidden><kbd>E</kbd> <span>Solve the number crystal</span></button>
    <div class="hotbar-wrap"><div class="build-label" id="build-label">YOUR EXPLORER'S KIT <span>Press B to build</span></div><div class="hotbar"><div id="block-slots"></div><span class="stock-label"><b id="block-stock">12</b> blocks</span><button class="build-button" id="build-toggle">${icon("cube")} Build</button></div></div>
@@ -205,7 +211,7 @@ function updateStats() {
   $("#explorers").innerHTML =
     `${avatarArt(profile.avatar)}<span>${escapeHtml(profile.name)}</span>`;
   $("#visit-village span").innerHTML =
-    `${escapeHtml(profile.name)}’s village<small>${(profile.builds.village || []).length} blocks built · 36 block types · unlimited materials</small>`;
+    `${escapeHtml(profile.name)}’s build worlds<small>5 landscapes · 12× more room · unlimited materials</small>`;
   $("#range-tag").textContent = `Up to ${save.range}`;
   $("#sound-home").innerHTML =
     `${icon(save.sound ? "sound" : "mute")} Sound ${save.sound ? "on" : "off"}`;
@@ -376,8 +382,10 @@ function showBuildTools() {
 function updateHud() {
   $("#game-hud").classList.toggle("creative-mode", villageMode);
   $("#creative-toolbar").hidden = !villageMode;
+  $("#change-build-worlds").hidden = !villageMode;
+  $("#map-coordinates").hidden = !villageMode;
   $("#quest-eyebrow").textContent = villageMode
-    ? "CREATIVE VILLAGE"
+    ? "CREATIVE WORLD"
     : "ISLAND HELPERS";
   $("#touch-down").hidden = !villageMode || !world.flying;
   $("#touch-jump").textContent =
@@ -388,17 +396,18 @@ function updateHud() {
     `${icon(villageMode ? "compass" : "home")} ${villageMode ? "Adventures" : "Village"} <kbd>V</kbd>`;
   if (villageMode) {
     $("#round-crystals").textContent = save.totalCrystals;
-    $("#quest-title").textContent = `${profile.name}’s village`;
+    const destination = creativeWorld(world.themeId);
+    $("#quest-title").textContent = destination.name;
     $("#quest-description").textContent =
-      "Unlimited blocks, big open plots and room to fly. Open Blocks or Tools to create something amazing.";
+      "256 blocks across. Build anywhere, or travel to a wide open site. Every world keeps its own creations.";
     $("#quest-crystals").innerHTML = avatarArt(profile.avatar);
     $("#quest-supplies").innerHTML =
       `${icon("check")} <span>${world.blocks.size.toLocaleString()} / ${CREATIVE_LIMIT.toLocaleString()} blocks built · autosaved</span>`;
-    $("#guide").innerHTML =
-      `${icon("compass")} G · Take me to the building plots`;
+    $("#guide").innerHTML = `${icon("compass")} G · Travel to a building site`;
     $("#block-stock").textContent = "∞";
     updateCreativeUI();
-    $(".map-label").textContent = "HOME VILLAGE";
+    $(".map-label").textContent = destination.name.toUpperCase();
+    $(".minimap").style.setProperty("--creative-land", destination.colour);
     return;
   }
   const count = round.collected.filter(Boolean).length;
@@ -699,13 +708,16 @@ function setBuild(enabled) {
 }
 function updatePosition({ x, z, yaw, nearby, portal, landmark }) {
   const player = $("#map-player");
-  player.style.left = `${50 + x * 1.55}%`;
-  player.style.top = `${50 + z * 1.55}%`;
+  const mapScale = villageMode ? 34 / CREATIVE_RADIUS : 1.55;
+  player.style.left = `${50 + x * mapScale}%`;
+  player.style.top = `${50 + z * mapScale}%`;
   player.style.transform = `translate(-50%,-50%) rotate(${-yaw}rad)`;
   const dirs = ["N", "NW", "W", "SW", "S", "SE", "E", "NE"];
   $("#heading").textContent =
     dirs[((Math.round(yaw / (Math.PI / 4)) % 8) + 8) % 8];
   if (villageMode) {
+    $("#map-coordinates").textContent =
+      `X ${Math.round(x)} · Z ${Math.round(z)}`;
     $("#interaction").hidden = true;
     return;
   }
@@ -752,7 +764,44 @@ function previewWorld() {
   $("#scene-biome").textContent =
     `0${selected + 1} / ${WORLDS[selected].biome}`;
 }
-function startVillage() {
+function showBuildWorlds() {
+  showModal(
+    `${modalClose()}<div class="eyebrow">MORE ROOM FOR BIG IDEAS</div><h2 id="modal-title">Where will you build?</h2><p class="modal-description">Five enormous creative worlds, all ready to explore. Each is 256 blocks across, with its own saved creations and room for 8,000 blocks. Your original village is in Grassland Valley.</p><div class="creative-world-cards">${CREATIVE_WORLDS.map((w, i) => `<button class="creative-world-card ${profile.creativeWorld === w.id ? "chosen" : ""}" data-creative-world="${w.id}" style="--world-colour:${w.colour};--world-sky:${w.sky}"><div class="creative-world-art">${cubeArt(w.theme)}<span>${i === 0 ? "YOUR ORIGINAL VILLAGE" : "CREATIVE WORLD 0" + (i + 1)}</span></div><div class="creative-world-copy"><h3>${w.name}</h3><p>${w.description}</p><small>${(profile.builds[w.id]?.length || 0).toLocaleString()} blocks saved · Unlimited materials</small><strong>${villageMode && world.themeId === w.id ? "Keep building" : "Enter world"} ${icon("arrow")}</strong></div></button>`).join("")}</div><p class="gentle-note">All worlds include flight, 36 block types, building tools and TNT.<br>Creations stay separate; changing worlds never replaces your existing buildings.</p>`,
+    "pause",
+    true,
+  );
+  bindClose(currentScreen === "play");
+  $$("[data-creative-world]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const id = b.dataset.creativeWorld;
+        if (villageMode && world.themeId === id) {
+          closeModal();
+          return;
+        }
+        startVillage(id);
+      }),
+  );
+}
+function showCreativeTravel() {
+  if (!villageMode) return;
+  const places = creativeSites(world.themeId);
+  showModal(
+    `${modalClose()}<div class="eyebrow">${creativeWorld(world.themeId).name.toUpperCase()}</div><h2 id="modal-title">Find your next building spot</h2><p class="modal-description">Travel instantly to a roomy foundation, or fly anywhere in the landscape. These markers are starting places; you can build beyond them.</p><div class="creative-travel-map" style="--travel-land:${creativeWorld(world.themeId).colour}"><span class="travel-map-land"></span>${places.map((p, i) => `<button data-site="${i}" style="left:calc(50% + ${(p.x * 86) / CREATIVE_RADIUS}px);top:calc(50% + ${(p.z * 86) / CREATIVE_RADIUS}px)" aria-label="Travel to ${p.name}">${i + 1}</button>`).join("")}</div><div class="creative-sites">${places.map((p, i) => `<button data-site="${i}"><b>${i + 1}</b><span>${p.name}<small>${i === 0 ? "Home camp" : "Open 36 × 36 building site"} · ${Math.round(Math.hypot(world.player.x - p.x, world.player.z - p.z))} blocks away</small></span>${icon("arrow")}</button>`).join("")}</div>`,
+    "pause",
+    true,
+  );
+  bindClose();
+  $$("[data-site]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const i = Number(b.dataset.site);
+        closeModal();
+        world.travelCreative(i);
+      }),
+  );
+}
+function startVillage(id = profile.creativeWorld) {
   closeModal(false);
   villageMode = true;
   landmarkReveal = false;
@@ -760,19 +809,21 @@ function startVillage() {
   $("#quest-reveal").hidden = true;
   $("#home-screen").hidden = true;
   $("#game-hud").hidden = false;
-  world.startVillage(buildingFor("village"));
+  profile.creativeWorld = creativeWorld(id) ? id : "village";
+  world.startVillage(buildingFor(profile.creativeWorld), profile.creativeWorld);
+  saveNow();
   renderHotbar();
   setBuild(true);
   updateHud();
   if (!matchMedia("(pointer: coarse)").matches) world.lock();
   toast(
-    "Welcome to your creative village! E: 36 blocks · T: big building tools · F: fly · Q: light TNT.",
+    `Welcome to ${creativeWorld(profile.creativeWorld).name}! G: travel · M: worlds · F: fly · E: blocks.`,
   );
 }
 function showProfiles() {
   if (currentScreen === "play") goHome();
   showModal(
-    `${modalClose()}<div class="eyebrow centered">A WORLD OF YOUR OWN</div><h2 id="modal-title">Who’s exploring today?</h2><p class="modal-description">Each explorer has their own village, creations, maths settings, and discoveries.</p><div class="explorer-list">${family.profiles.map((p) => `<div class="explorer-row"><button class="explorer-select ${p.id === profile.id ? "chosen" : ""}" data-profile="${escapeHtml(p.id)}">${avatarArt(p.avatar)}<span><strong>${escapeHtml(p.name)}</strong><small>${p.progress.totalCrystals} crystals · ${p.builds.village?.length || 0} village blocks</small></span>${icon(p.id === profile.id ? "check" : "arrow")}</button><button class="icon-button" data-edit-profile="${escapeHtml(p.id)}" aria-label="Personalise ${escapeHtml(p.name)}">${icon("settings")}</button></div>`).join("")}</div>${family.profiles.length < 6 ? `<button class="primary-button wide" id="add-explorer">Add an explorer ${icon("spark")}</button>` : ""}<p class="privacy-note">Saved on this device. No account or email needed.<br>Everyone keeps their own progress and creations.</p>`,
+    `${modalClose()}<div class="eyebrow centered">A WORLD OF YOUR OWN</div><h2 id="modal-title">Who’s exploring today?</h2><p class="modal-description">Each explorer has their own village, creations, maths settings, and discoveries.</p><div class="explorer-list">${family.profiles.map((p) => `<div class="explorer-row"><button class="explorer-select ${p.id === profile.id ? "chosen" : ""}" data-profile="${escapeHtml(p.id)}">${avatarArt(p.avatar)}<span><strong>${escapeHtml(p.name)}</strong><small>${p.progress.totalCrystals} crystals · ${CREATIVE_WORLDS.reduce((sum, w) => sum + (p.builds[w.id]?.length || 0), 0)} creative blocks</small></span>${icon(p.id === profile.id ? "check" : "arrow")}</button><button class="icon-button" data-edit-profile="${escapeHtml(p.id)}" aria-label="Personalise ${escapeHtml(p.name)}">${icon("settings")}</button></div>`).join("")}</div>${family.profiles.length < 6 ? `<button class="primary-button wide" id="add-explorer">Add an explorer ${icon("spark")}</button>` : ""}<p class="privacy-note">Saved on this device. No account or email needed.<br>Everyone keeps their own progress and creations.</p>`,
   );
   bindClose(false);
   $$("[data-profile]").forEach(
@@ -904,8 +955,9 @@ function finishLandmark() {
 }
 $("#explorers").onclick = showProfiles;
 $("#game-profiles").onclick = showProfiles;
-$("#visit-village").onclick = startVillage;
-$("#game-village").onclick = () => (villageMode ? goHome() : startVillage());
+$("#visit-village").onclick = showBuildWorlds;
+$("#change-build-worlds").onclick = showBuildWorlds;
+$("#game-village").onclick = () => (villageMode ? goHome() : showBuildWorlds());
 $("#landmark-guide").onclick = () => world.guideLandmark();
 window.addEventListener("storage", (e) => {
   if (e.key !== FAMILY_KEY || !e.newValue) return;
@@ -997,7 +1049,9 @@ renderCards();
 try {
   world = new IslandWorld($("#world"), {
     challenge: interactQuest,
-    village: () => (villageMode ? goHome() : startVillage()),
+    village: () => (villageMode ? goHome() : showBuildWorlds()),
+    creativeWorlds: showBuildWorlds,
+    creativeTravel: showCreativeTravel,
     palette: showPalette,
     tools: showBuildTools,
     creative: updateCreativeUI,

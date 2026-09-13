@@ -3308,3 +3308,237 @@ dialog h2 {
     display: none;
   }
 }
+
+/* A world atlas for the larger creative landscapes. */
+#change-build-worlds {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 0 0;
+  border: 0;
+  background: none;
+  color: #fff3cf;
+  font-size: 12px;
+  cursor: pointer;
+}
+#change-build-worlds kbd {
+  font-size: 9px;
+}
+.creative-mode .map-land {
+  background: var(--creative-land, #8baa76);
+}
+.creative-world-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+.creative-world-card {
+  overflow: hidden;
+  text-align: left;
+  border: 1px solid #dce4d5;
+  border-radius: 16px;
+  background: #f7f5ea;
+  color: #345340;
+}
+.creative-world-card:hover,
+.creative-world-card.chosen {
+  border-color: #658d66;
+  box-shadow: 0 5px 16px #2e593e12;
+}
+.creative-world-card:first-child {
+  grid-column: 1/-1;
+  display: grid;
+  grid-template-columns: 180px 1fr;
+}
+.creative-world-art {
+  min-height: 112px;
+  position: relative;
+  background:
+    radial-gradient(
+      ellipse at 50% 70%,
+      color-mix(in srgb, var(--world-colour), transparent 45%) 0,
+      transparent 65%
+    ),
+    linear-gradient(
+      155deg,
+      var(--world-sky),
+      color-mix(in srgb, var(--world-colour), var(--world-sky) 70%)
+    );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.creative-world-art .island-icon {
+  width: 98px;
+  height: 94px;
+  filter: drop-shadow(0 7px 5px #25393433);
+  margin: 6px 0 20px;
+}
+.creative-world-art > span {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  font-size: 8px;
+  letter-spacing: 1px;
+  background: #fff9e8dc;
+  color: #365448;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.creative-world-copy {
+  padding: 16px 18px;
+}
+.creative-world-copy h3 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  text-align: left;
+}
+.creative-world-copy p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+.creative-world-copy small {
+  display: block;
+  font-size: 10px;
+  color: #6c7b68;
+}
+.creative-world-copy strong {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  font-size: 12px;
+}
+.creative-world-copy .icon {
+  width: 16px;
+  height: 16px;
+}
+.creative-travel-map {
+  position: relative;
+  height: 200px;
+  margin: 15px 0;
+  background: linear-gradient(145deg, #e8f0e1, #d4e9e9);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.travel-map-land {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 47% 52% 46% 51%;
+  background: #a7c698;
+  border: 3px solid #cce2bb;
+}
+.creative-travel-map button {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #fff9e9;
+  background: #345e49;
+  color: #fff;
+  z-index: 1;
+  font-weight: 700;
+}
+.creative-sites {
+  display: grid;
+  gap: 7px;
+}
+.creative-sites button {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  border: 1px solid #dde4d3;
+  border-radius: 10px;
+  padding: 11px 14px;
+  background: #f2f4e8;
+  color: #395443;
+  text-align: left;
+}
+.creative-sites button > b {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #dae9cb;
+  text-align: center;
+  line-height: 30px;
+}
+.creative-sites button > span {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+}
+.creative-sites small {
+  display: block;
+  font-size: 10px;
+  margin-top: 3px;
+  color: #72806c;
+  font-weight: 400;
+}
+.creative-sites .icon {
+  width: 16px;
+}
+@media (max-width: 760px) {
+  .creative-world-cards {
+    grid-template-columns: 1fr;
+  }
+  .creative-world-card:first-child {
+    display: block;
+  }
+  .creative-world-card {
+    display: grid !important;
+    grid-template-columns: 96px 1fr !important;
+  }
+  .creative-world-art .island-icon {
+    width: 78px;
+  }
+  .creative-world-art > span {
+    font-size: 6px;
+    left: 5px;
+    letter-spacing: 0;
+    padding: 3px;
+  }
+  .creative-world-copy {
+    padding: 13px 12px;
+  }
+  .creative-world-copy h3 {
+    font-size: 18px;
+  }
+  .creative-world-copy p {
+    font-size: 11px;
+  }
+  .creative-world-copy small {
+    font-size: 9px;
+  }
+  #change-build-worlds {
+    font-size: 10px;
+  }
+}
+#map-coordinates {
+  position: absolute;
+  bottom: -17px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: #35584c;
+  background: #fff7e7dd;
+  border-radius: 5px;
+  font-size: 9px;
+  padding: 3px 6px;
+}
+.travel-map-land {
+  background: var(--travel-land, #a7c698);
+}
+@media (max-width: 760px) {
+  #map-coordinates {
+    bottom: 0;
+    font-size: 8px;
+  }
+}

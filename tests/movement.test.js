@@ -27,7 +27,8 @@ function fixture() {
     particles: [],
     collected: Array(5).fill(false),
     targetOutline: { visible: false },
-    renderer: { render() {} },
+    renderer: { render() {}, shadowMap: {} },
+    sun: new THREE.DirectionalLight(),
     buildMode: false,
   });
   for (let x = -8; x <= 8; x++)

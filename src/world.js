@@ -1,15 +1,17 @@
+import {
+  creativeWorld,
+  creativeSites,
+  isCreativeWorld,
+} from "./creative-worlds.js";
+import { installCreativeTerrain } from "./creative-terrain.js";
+import { CreativeScenery } from "./creative-scenery.js";
 import * as THREE from "three";
 import { QUESTS, questsFor } from "./quests.js";
 import { QuestWorld } from "./quest-world.js";
 import { AdventureWorld } from "./adventure-world.js";
 import { BiomeWorld, terrainLevel } from "./biomes.js";
 import { MAX_BLOCKS } from "./profiles.js";
-import {
-  CREATIVE_RADIUS,
-  CREATIVE_HEIGHT,
-  DEFAULT_HOTBAR,
-  cleanHotbar,
-} from "./blocks.js";
+import { CREATIVE_HEIGHT, DEFAULT_HOTBAR, cleanHotbar } from "./blocks.js";
 import { VoxelBuild } from "./voxel-build.js";
 import { CreativeBuilder } from "./creative-builder.js";
 import { installBuildMaterials } from "./build-materials.js";
@@ -198,6 +200,7 @@ export class IslandWorld {
       const mats = new Set(),
         geos = new Set();
       this.root.traverse((o) => {
+        if (o.isInstancedMesh) o.dispose();
         if (o.geometry && o.geometry !== this.geo) geos.add(o.geometry);
         if (o.material)
           (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) =>
@@ -215,15 +218,28 @@ export class IslandWorld {
     this.biome = null;
     this.portalSurface = null;
     this.portal = null;
-    this.isVillage = id === "village";
+    this.isVillage = isCreativeWorld(id);
+    this.creativeConfig = creativeWorld(id);
     this.sheep = [];
     this.themeId = id;
     this.quests = questsFor(id, this.questRound);
     this.questSites = this.quests.map(({ x, z }) => ({ x, z }));
     this.farmQuests = this.quests === QUESTS;
-    this.theme = THEMES[id === "village" ? "meadow" : id];
+    this.theme = THEMES[this.creativeConfig?.theme || id];
     this.scene.background = new THREE.Color(this.theme.sky);
-    this.scene.fog = new THREE.Fog(this.theme.fog, 78, 180);
+    this.scene.fog = new THREE.Fog(
+      this.theme.fog,
+      this.isVillage ? 220 : 78,
+      this.isVillage ? 520 : 180,
+    );
+    this.camera.far = this.isVillage ? 650 : 220;
+    this.camera.updateProjectionMatrix();
+    this.shadowAnchor = null;
+    this.sun.position.set(-28, 52, 25);
+    this.sun.target.position.set(0, 0, 0);
+    this.sun.target.updateMatrixWorld();
+    this.sun.shadow.camera.far = this.isVillage ? 260 : 140;
+    this.sun.shadow.camera.updateProjectionMatrix();
     this.root = new THREE.Group();
     this.scene.add(this.root);
     this.terrain = new Map();
@@ -277,13 +293,22 @@ export class IslandWorld {
         roughness: 0.55,
       }),
     });
-    if (this.isVillage) installBuildMaterials(this);
-    const extent = this.isVillage ? CREATIVE_RADIUS + 1 : 22;
+    if (this.isVillage) {
+      installBuildMaterials(this);
+      installCreativeTerrain(this, id);
+      this.biome = new CreativeScenery(this, id);
+      this.flushBatches();
+      if (this.creativeConfig.theme !== "moon") this.makeClouds();
+      this.makeFireflies();
+      this.renderer.shadowMap.needsUpdate = true;
+      return;
+    }
+    const extent = 22;
     for (let x = -extent; x <= extent; x++)
-      for (let z = this.isVillage ? -extent : -21; z <= extent; z++) {
+      for (let z = -21; z <= extent; z++) {
         const edge = Math.sqrt((x / 1.04) ** 2 + z * z);
         const wobble = Math.sin(x * 0.48) * 0.7 + Math.cos(z * 0.6) * 0.7;
-        if (edge > (this.isVillage ? CREATIVE_RADIUS : 21) + wobble) continue;
+        if (edge > 21 + wobble) continue;
         const y = terrainLevel(
           id,
           x,
@@ -344,13 +369,6 @@ export class IslandWorld {
         }
       }
     this.biome = new BiomeWorld(this, id);
-    if (this.isVillage) {
-      this.flushBatches();
-      this.makeClouds();
-      this.makeFireflies();
-      this.renderer.shadowMap.needsUpdate = true;
-      return;
-    }
     const trees = [
       [-15, 11, 1],
       [-13, -1, 0],
@@ -640,11 +658,11 @@ export class IslandWorld {
   makeClouds() {
     for (let i = 0; i < 22; i++) {
       const g = new THREE.Group();
-      const r = 35 + hash(i, 4) * 65;
+      const r = this.isVillage ? 140 + hash(i, 4) * 65 : 35 + hash(i, 4) * 65;
       const angle = hash(i, 5) * Math.PI * 2;
       g.position.set(
         Math.cos(angle) * r,
-        -7 + hash(i, 2) * 28,
+        this.isVillage ? -9 + hash(i, 2) * 9 : -7 + hash(i, 2) * 28,
         Math.sin(angle) * r,
       );
       for (let j = 0; j < 5; j++)
@@ -735,6 +753,7 @@ export class IslandWorld {
       }
       if (this.isVillage) {
         if (e.code === "KeyF") this.toggleFlight();
+        if (e.code === "KeyM") this.callbacks.creativeWorlds?.();
         if (e.code === "KeyI") this.callbacks.palette?.();
         if (e.code === "KeyT") this.callbacks.tools?.();
         if (e.code === "KeyQ") this.igniteTNT();
@@ -874,10 +893,10 @@ export class IslandWorld {
     this.selectSlot(0);
     this.setMode("play");
   }
-  startVillage(building) {
+  startVillage(building, id = "village") {
     this.questRound = null;
     this.collected = Array(5).fill(false);
-    this.loadTheme("village");
+    this.loadTheme(isCreativeWorld(id) ? id : "village");
     this.restoreBuilding(building);
     this.player.set(0, 3.2, 13);
     this.ensureBuildClearance();
@@ -1030,11 +1049,7 @@ export class IslandWorld {
   }
   guide() {
     if (this.isVillage) {
-      this.player.set(0, 3.2, 6);
-      this.ensureBuildClearance();
-      this.lookYaw = -Math.PI / 2;
-      this.lookPitch = -0.25;
-      this.velocityY = 0;
+      this.callbacks.creativeTravel?.();
       return;
     }
     const index = this.collected.findIndex((x) => !x);
@@ -1047,6 +1062,30 @@ export class IslandWorld {
       index < 0
         ? "The portal is ready. Press E to step through!"
         : `You found the ${this.quests[index].location.toLowerCase()}. Press E to help!`,
+    );
+  }
+  travelCreative(index = 0) {
+    if (!this.isVillage) return;
+    const site = creativeSites(this.themeId)[index];
+    if (!site) return;
+    this.player.set(site.x, this.heightAt(site.x, site.z) + 1.7, site.z);
+    // Arrival is always above the highest player-built floor at this location.
+    for (const b of this.voxels?.nearby(site.x, site.z) || [])
+      if (
+        Math.abs(b.position.x - site.x) < 0.75 &&
+        Math.abs(b.position.z - site.z) < 0.75
+      )
+        this.player.y = Math.max(this.player.y, b.position.y + 2.2);
+    this.lookYaw = index === 0 ? -Math.PI / 2 : 0;
+    this.lookPitch = -0.25;
+    this.velocityY = 0;
+    this.keys.clear();
+    this.touchMove = { x: 0, z: 0 };
+    this.builder.anchor = null;
+    this.heldBuild = null;
+    this.callbacks.creative?.();
+    this.callbacks.tip?.(
+      `${site.name}. This whole landscape is yours to build on.`,
     );
   }
   updateCollected(collected) {
@@ -1234,7 +1273,7 @@ export class IslandWorld {
       return false;
     for (const c of this.colliders)
       if (
-        !(this.isVillage && this.flying && this.player.y > 9) &&
+        !(this.isVillage && this.player.y - 1.7 > (c.top ?? 9)) &&
         Math.abs(x - c.x) < c.w / 2 + 0.24 &&
         Math.abs(z - c.z) < c.d / 2 + 0.24
       )
@@ -1292,7 +1331,7 @@ export class IslandWorld {
           side /= length;
         }
         const speed =
-          (this.flying ? 9 : this.keys.has("ShiftLeft") ? 7 : 4.7) * dt;
+          (this.flying ? 18 : this.keys.has("ShiftLeft") ? 7 : 4.7) * dt;
         const dx =
           (-Math.sin(this.lookYaw) * forward + Math.cos(this.lookYaw) * side) *
           speed;
@@ -1413,6 +1452,17 @@ export class IslandWorld {
       if (this.isVillage && this.builder?.anchor)
         this.targetOutline.material.color.set(0xffd571);
       else this.targetOutline.material.color.set(0xffffff);
+    }
+    if (
+      this.isVillage &&
+      this.mode === "play" &&
+      (!this.shadowAnchor || this.player.distanceTo(this.shadowAnchor) > 12)
+    ) {
+      this.shadowAnchor = this.player.clone();
+      this.sun.target.position.copy(this.player);
+      this.sun.target.updateMatrixWorld();
+      this.sun.position.copy(this.player).add(new THREE.Vector3(-28, 70, 25));
+      this.renderer.shadowMap.needsUpdate = true;
     }
     this.renderer.render(this.scene, this.camera);
   }

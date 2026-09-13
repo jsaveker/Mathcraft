@@ -1,6 +1,6 @@
 # Mathcraft — Number Islands
 
-A playable, original voxel adventure for practising addition and subtraction. Explore five floating worlds with 25 different projects, from a farm rescue to a rocket launch. Correct answers visibly change the world and earn materials for building during adventures. A permanent creative village offers unlimited materials, flight and TNT. Each explorer has separate progress, builds, settings, and a blocky avatar.
+A playable, original voxel adventure for practising addition and subtraction. Explore five floating worlds with 25 different projects, from a farm rescue to a rocket launch. Correct answers visibly change the world and earn materials for building during adventures. Five permanent creative worlds offer unlimited materials, flight and TNT. Each explorer has separate progress, builds, settings, and a blocky avatar.
 
 ## Run locally
 
@@ -29,8 +29,8 @@ npm run preview
 | Arrow keys  | Move forward/backward and turn                                                    |
 | Space       | Jump                                                                              |
 | E           | Gather or inspect supplies, then solve the current job; enter the restored portal |
-| G           | Go to the current island job or the portal                                        |
-| V           | Visit your village, or return to adventures from the village                      |
+| G           | Go to the current island job; open creative travel while building                 |
+| V           | Choose a creative world, or return to adventures while building                   |
 | L           | Go to the island’s special landmark                                               |
 | B           | Toggle building                                                                   |
 | 1, 2, 3     | Select grass, wood, or crystal blocks                                             |
@@ -40,7 +40,7 @@ npm run preview
 
 On touchscreens, use the direction pad, drag the world to look, and use the on-screen jump, interaction, and building buttons. Desktop is the primary play experience. In-app browsers that restrict pointer lock use drag-to-look automatically.
 
-The island edge prevents falling. Scenery is preserved; players can mine their own placed blocks. Each new explorer starts with 36 blocks. Every correct answer earns 3 more, and each island landmark awards 12 blocks once per explorer. Adventure islands each save up to 600 placed blocks. The creative village has unlimited materials and saves up to 8,000 blocks, with a height limit of 80 and an island roughly 72 blocks across. Village building and mining never change earned adventure materials.
+The island edge prevents falling. Scenery is preserved; players can mine their own placed blocks. Each new explorer starts with 36 blocks. Every correct answer earns 3 more, and each island landmark awards 12 blocks once per explorer. Adventure islands each save up to 600 placed blocks. Each creative world has unlimited materials and saves up to 8,000 blocks, with a height limit of 80 and a landscape roughly 256 blocks across (over 12 times the previous village’s land area). Village building and mining never change earned adventure materials.
 
 ## Maths and progress
 
@@ -70,13 +70,13 @@ The island edge prevents falling. Scenery is preserved; players can mine their o
 
 The controls and addition/subtraction puzzles stay familiar. Each project changes its own machinery, and each world has its own scenery: snowy peaks, desert ruins, suspended sky docks, or a crater and Earth above a moon base. Complete all five jobs to activate the onward portal. The rocket reveal camera follows its ascent.
 
-## Your village and discoveries
+## Your creative worlds and discoveries
 
-Use **My village** on the welcome screen or **V** during an adventure. Each explorer owns a green island with open building plots, an entrance arch, and a fountain. Use 36 block types including bricks, logs, glass, coloured cubes, glowstone, ice and TNT. Choose nine favourites for your hotbar; favourites and creations are saved separately for each explorer. Builds on the adventure islands also stay saved when travelling or starting another puzzle round.
+Use **My build worlds** on the welcome screen or **V** during an adventure to choose any creative destination. All five are available immediately, independently of maths-world unlocks. Use **M / Change world** while building. Each explorer keeps separate creations in Grassland Valley, Moon Frontier, Cloud Kingdom, Desert Horizons and Crystal Highlands. Grassland Valley retains the original village, its saved buildings and its flat central foundations; the landscape expands around them. Use 36 block types including bricks, logs, glass, coloured cubes, glowstone, ice and TNT. Choose nine favourites for your hotbar; favourites and creations are saved separately for each explorer. Builds on the adventure islands also stay saved when travelling or starting another puzzle round.
 
 Creative controls:
 
-| Control             | Village action                                                                        |
+| Control             | Creative action                                                                       |
 | ------------------- | ------------------------------------------------------------------------------------- |
 | E or I              | Open the block library; choose a replacement for the selected hotbar slot             |
 | 1–9                 | Select a favourite block                                                              |
@@ -89,7 +89,19 @@ Creative controls:
 | Z / Undo            | Undo the last action, stop a fuse, or restore an entire blast                         |
 | Y / Redo            | Redo an undone action                                                                 |
 
-Lines, walls and floors use two placed corners, up to 24 blocks apart. Flying permits midair placement. A wireframe previews the design, turning red if the free cells cannot fit. Blueprints preserve existing blocks in overlapping cells. Each brush, blueprint and TNT chain counts as one undo action; history retains 24 actions during the current village visit and resets on leaving or reloading.
+Use **G / Travel** to jump to one of five sites in the current world. Each of the four outer sites has an open 36 × 36 foundation, and the surrounding landscape is also buildable. Flight travels at 18 blocks per second. The minimap scales to the expanded boundary and shows coordinates. Arrival places the explorer above any buildings at the destination.
+
+| Creative world    | Landscape                                                             |
+| ----------------- | --------------------------------------------------------------------- |
+| Grassland Valley  | The original village, open meadows, woodland groves and rolling hills |
+| Moon Frontier     | Lunar plains, crater rims, a landing camp, stars and a large Earth    |
+| Cloud Kingdom     | Terraces, harbour arches, cloud banks and distant floating islands    |
+| Desert Horizons   | Dunes, mesas, pyramids, palms and an oasis                            |
+| Crystal Highlands | Snow-capped ridges, giant crystals and animated northern lights       |
+
+Each world keeps its own 8,000-block allowance. Switching worlds does not move or replace buildings. The last selected world is remembered per explorer. As before, saves are local to the browser and device.
+
+Lines, walls and floors use two placed corners, up to 24 blocks apart. Flying permits midair placement. A wireframe previews the design, turning red if the free cells cannot fit. Blueprints preserve existing blocks in overlapping cells. Each brush, blueprint and TNT chain counts as one undo action; history retains 24 actions during the current creative-world visit and resets on leaving or reloading.
 
 TNT clears player-built cubes within 4.5 blocks and triggers nearby TNT. Terrain and village scenery remain intact. There is no player damage. Fuses pause in menus and stop when leaving; completed damage is autosaved even during a longer chain. Explosions use procedural particles and sound, with fewer particles for reduced-motion preferences. The sound toggle applies to explosions too. Restored blocks cannot trap the explorer: overlapping builds lift them onto the highest block at that position.
 
@@ -107,6 +119,9 @@ The first explorer inherits the original game’s maths progress and unlocks. Th
 
 [Three.js WebGLRenderer](https://threejs.org/docs/pages/WebGLRenderer.html) renders the world. Instanced blocks reduce draw calls. Terrain, textures, trees, structures, clouds, animals, portal effects, and audio are generated in code. The UI uses HTML/CSS and native dialogs. Vite builds the application. Fonts are Outfit and DM Sans, distributed through Fontsource under the SIL Open Font License; their licence files are included in the dependencies.
 
+- `src/creative-worlds.js`: destination catalogue, flat travel sites and deterministic terrain heights.
+- `src/creative-terrain.js`: exposed-face terrain meshes split into spatial chunks for culling.
+- `src/creative-scenery.js`: themed creative hubs, landmarks and distant scenery.
 - `src/blocks.js`: stable block palette, saved hotbar validation, brushes and blueprints.
 - `src/voxel-build.js`: instanced construction meshes and spatial ray/collision lookup.
 - `src/creative-builder.js`: creative tools, previews, transactional undo and TNT chains.
